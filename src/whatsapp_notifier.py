@@ -9,25 +9,36 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import threading
 import tempfile
+import yaml
 
 class WhatsAppNotifier:
-    def __init__(self, 
-                 executable_path='/home/dark/work/test/chromedriver-linux64/chromedriver', 
-                 user_data_dir='/home/dark/chrome_profile', 
-                 profile_directory="Default"):
+    def __init__(self, config_path='config.yaml'):
         """
-        Initialize WhatsApp Notifier with Selenium WebDriver
+        Initialize WhatsApp Notifier with configuration from YAML file
         
-        :param executable_path: Path to ChromeDriver executable
-        :param user_data_dir: Chrome user data directory
-        :param profile_directory: Chrome profile directory
+        :param config_path: Path to configuration YAML file
         """
+        # Load configuration
+        with open(config_path, 'r') as config_file:
+            config = yaml.safe_load(config_file)
+        
+        # Extract WhatsApp and Chrome configurations
+        chrome_config = config.get('chrome', {})
+        whatsapp_config = config.get('whatsapp', {})
+        
+        # Set configuration parameters
+        self.executable_path = chrome_config.get('driver', {}).get('executable_path', '/usr/bin/chromedriver')
+        self.user_data_dir = chrome_config.get('profile', {}).get('user_data_dir', '/home/dark/chrome_profile')
+        self.profile_directory = chrome_config.get('profile', {}).get('profile_directory', 'Default')
+        self.contact_name = whatsapp_config.get('contact_name', 'Default Contact')
+        self.phone_number = whatsapp_config.get('phone_number', '')
+        
+        # Chrome binary location
+        self.chrome_binary_location = chrome_config.get('driver', {}).get('binary_location', '/usr/bin/chromium-browser')
+        
         self.whatsapp_driver = None
         self.current_contact = None
         self.send_lock = threading.Lock()
-        self.executable_path = executable_path
-        self.user_data_dir = user_data_dir
-        self.profile_directory = profile_directory
         
         # Configure logging
         logging.basicConfig(level=logging.DEBUG)
@@ -40,7 +51,7 @@ class WhatsAppNotifier:
         :param silent: Suppress logging
         """
         chrome_options = Options()
-        chrome_options.binary_location = "/usr/bin/chromium-browser"
+        chrome_options.binary_location = self.chrome_binary_location
         
         if headless:
             temp_profile_dir = tempfile.mkdtemp(prefix="chrome_profile_headless_")
@@ -198,7 +209,7 @@ Priority: {priority}
 Description:
 {description}"""
     
-    def send_violation_notification(self, alert_id, violation_types, timestamp, description, contact_name="Fares Voda"):
+    def send_violation_notification(self, alert_id, violation_types, timestamp, description, contact_name=None):
         """
         Send a violation notification to a specific contact
         
@@ -206,8 +217,12 @@ Description:
         :param violation_types: List of violation types
         :param timestamp: Time of violation
         :param description: Violation description
-        :param contact_name: Contact to send notification to
+        :param contact_name: Contact to send notification to (uses configured contact if not specified)
         """
+        # Use configured contact name if not provided
+        if contact_name is None:
+            contact_name = self.contact_name
+        
         violation_type_str = ', '.join(violation_types)
         message = self.create_notification_message(
             alert_id=alert_id,

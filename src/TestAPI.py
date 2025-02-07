@@ -4,11 +4,8 @@ from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, Fil
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
-import shutil
 from pathlib import Path
 import cv2
-import os
-import csv
 import uvicorn
 from ultralytics import YOLO
 from ultralytics.utils.plotting import Annotator, colors
@@ -20,15 +17,36 @@ from datetime import datetime
 import base64
 import torch
 from whatsapp_notifier import WhatsAppNotifier
+import yaml
 
+with open('config/config.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
 
-alert_counter = 1
-PHONE_NUMBER = "+201553641192"
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, config.get('logging', {}).get('level', 'DEBUG').upper()),
+    filename=config.get('logging', {}).get('file_path', './fire_detection.log')
+)
+
+# Model configuration
+model_config = config.get('model', {}).get('fire_detection', {})
+stream_url = config.get('video', {}).get('stream_url', 'firedemo.mp4')
+output_directory = config.get('video', {}).get('output_directory', './output')
+
+# Device configuration
+device = torch.device('cuda' if config.get('device', {}).get('prefer_cuda', False) and torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
-fire_model = YOLO("FireSmoke3.pt").to(device)
 
-whatsapp_notifier = WhatsAppNotifier()
+# Load fire detection model
+fire_model = YOLO(model_config.get('path', "FireSmoke3.pt")).to(device)
+confidence_threshold = model_config.get('confidence_threshold', 0.5)
+
+# Notification settings
+alert_counter = config.get('notification', {}).get('initial_alert_counter', 1)
+default_priority = config.get('notification', {}).get('default_priority', 'High')
+
+# WhatsApp Notifier
+whatsapp_notifier = WhatsAppNotifier('config/config.yaml')
 
 class UnCompressedVideoFrames(BaseModel):
     frame: Any
@@ -49,7 +67,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-stream_url = "firedemo.mp4" 
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -238,9 +255,10 @@ async def meta_data_text(request: Request, data: UnCompressedVideoFrames):
 
 @app.on_event("startup")
 def startup_event():
+    contact_name = config.get('whatsapp', {}).get('contact_name', 'Fares Voda')
     whatsapp_notifier.init_driver(headless=False, silent=True) \
                       .login() \
-                      .open_contact_chat("Fares Voda")
+                      .open_contact_chat(contact_name)
 
 if __name__ == "__main__":
     uvicorn.run("TestAPI:app", host="0.0.0.0", port=8000, reload=True)

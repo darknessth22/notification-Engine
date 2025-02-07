@@ -1,0 +1,46 @@
+
+# Model Configuration
+model:
+  fire_detection:
+    path: "models/FireSmoke3.pt"
+    confidence_threshold: 0.5
+
+# Video Input Configuration
+video:
+  stream_url: "video/firedemo.mp4"
+  output_directory: "./output"
+
+# Chrome and WebDriver Configuration
+chrome:
+  driver:
+    executable_path: "/home/dark/work/test/chromedriver-linux64/chromedriver"
+    binary_location: "/usr/bin/chromium-browser"
+  
+  profile:
+    user_data_dir: "/home/dark/chrome_profile"
+    profile_directory: "Default"
+
+# WhatsApp Notification Configuration
+whatsapp:
+  contact_name: "Fares Voda"
+  phone_number: "+201553641192"
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+
+# Logging Configuration
+logging:
+  level: "DEBUG"
+  file_path: "./fire_detection.log"
+
+# Detection Notification Settings
+notification:
+  initial_alert_counter: 1
+  default_priority: "High"
+
+# Device Configuration
+device:
+  prefer_cuda: true

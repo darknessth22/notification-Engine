@@ -4,7 +4,6 @@
 
 This project is an advanced fire and smoke detection system using computer vision and machine learning, with real-time notification capabilities via WhatsApp. The application leverages YOLOv8 for object detection and Selenium for sending automated notifications.
 
-
 ## Prerequisites
 
 ### Hardware
@@ -44,35 +43,46 @@ pip install -r requirements.txt
 
 ### WhatsApp Configuration
 1. Ensure Chrome/Chromium is installed
-2. Update paths in `whatsapp_notifier.py`:
+2. Update paths in `config/config.yaml`:
    - `executable_path`: Path to ChromeDriver
    - `user_data_dir`: Chrome profile directory
-   - `PHONE_NUMBER`: Contact for notifications
+   - `contact_name`: Contact for notifications
 
 ### Model Configuration
-- Adjust detection confidence in `process_frame()` function
+- Adjust detection confidence in `config/config.yaml`
 - Modify notification thresholds as needed
 
 ## Running the Application
 
 ### Start the Server
 ```bash
-python gpu.py
-
+python TestAPI.py
 ```
+
 ### Access Endpoints
 - Video Feed: `http://localhost:8000/video_feed`
 - Metadata: `http://localhost:8000/test`
+
 ## Project Structure
 ```
-fire-detection-system/
+notification Engine/
 │
-├── TestAPI.py             # Main FastAPI application
-├── whatsapp_notifier.py  # WhatsApp notification module
-├── FireSmoke3.pt      # YOLOv8 detection model
-├── firedemo.mp4       # Sample video input
-├── requirements.txt   # Python dependencies
-└── README.md          # Project documentation
+├── src/
+│   ├── TestAPI.py             # Main FastAPI application
+│   ├── whatsapp_notifier.py   # WhatsApp notification module
+│   ├── config_manager.py      # Configuration manager
+│
+├── config/
+│   └── config.yaml            # Configuration file
+│
+├── models/
+│   └── FireSmoke3.pt          # YOLOv8 detection model
+│
+├── video/
+│   └── firedemo.mp4           # Sample video input
+│
+├── requirements.txt           # Python dependencies
+└── README.md                  # Project documentation
 ```
 
 ## Dependencies
@@ -82,6 +92,12 @@ fire-detection-system/
 - Selenium
 - PyTorch
 - uvicorn
+
+## Modifications
+- **Added `whatsapp_notifier.py`**: Handles WhatsApp notifications using Selenium.
+- **Added `config_manager.py`**: Manages configuration settings for the application.
+- **Updated `TestAPI.py`**: Integrated WhatsApp notifications and configuration management.
+- **Added `config/config.yaml`**: Centralized configuration file for model, video, WhatsApp, and other settings.
 
 ## Troubleshooting
 - Ensure ChromeDriver version matches Chrome browser

@@ -1,4 +1,4 @@
-# Fire Detection and Notification System
+# Notification System
 
 ## Overview
 

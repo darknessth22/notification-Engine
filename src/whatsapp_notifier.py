@@ -10,45 +10,73 @@ from selenium.webdriver.support import expected_conditions as EC
 import threading
 import tempfile
 import yaml
+from typing import Dict, Any
 
 class WhatsAppNotifier:
-    def __init__(self, config_path='config.yaml'):
+    def __init__(self, config_path: str = 'config/config.yaml'):
         """
         Initialize WhatsApp Notifier with configuration from YAML file
         
         :param config_path: Path to configuration YAML file
         """
-        # Load configuration
-        with open(config_path, 'r') as config_file:
-            config = yaml.safe_load(config_file)
-        
-        # Extract WhatsApp and Chrome configurations
-        chrome_config = config.get('chrome', {})
-        whatsapp_config = config.get('whatsapp', {})
-        
-        # Set configuration parameters
-        self.executable_path = chrome_config.get('driver', {}).get('executable_path', '/usr/bin/chromedriver')
-        self.user_data_dir = chrome_config.get('profile', {}).get('user_data_dir', '/home/dark/chrome_profile')
-        self.profile_directory = chrome_config.get('profile', {}).get('profile_directory', 'Default')
-        self.contact_name = whatsapp_config.get('contact_name', 'Default Contact')
-        self.phone_number = whatsapp_config.get('phone_number', '')
-        
-        # Chrome binary location
-        self.chrome_binary_location = chrome_config.get('driver', {}).get('binary_location', '/usr/bin/chromium-browser')
-        
+        self.config_path = config_path
+        self.config = self._load_config()
+        chrome_config = self.config.get('chrome', {})
+        whatsapp_config = self.config.get('whatsapp', {})
+        driver_config = chrome_config.get('driver', {})
+        self.executable_path = driver_config.get('executable_path')
+        self.chrome_binary_location = driver_config.get('binary_location')
+        profile_config = chrome_config.get('profile', {})
+        self.user_data_dir = profile_config.get('user_data_dir')
+        self.profile_directory = profile_config.get('profile_directory')
+        self.contact_name = whatsapp_config.get('contact_name')
+        self.phone_number = whatsapp_config.get('phone_number')
         self.whatsapp_driver = None
         self.current_contact = None
         self.send_lock = threading.Lock()
-        
-        # Configure logging
+        self._validate_config()
         logging.basicConfig(level=logging.DEBUG)
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """
+        Load configuration from the specified YAML file
         
-    def init_driver(self, headless=True, silent=True):
+        :return: Loaded configuration as a dictionary
+        """
+        try:
+            with open(self.config_path, 'r') as config_file:
+                return yaml.safe_load(config_file)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load configuration from {self.config_path}: {str(e)}")
+    
+    def _validate_config(self):
+        """
+        Validate required configuration values
+        """
+        required_fields = {
+            'executable_path': 'chrome.driver.executable_path',
+            'chrome_binary_location': 'chrome.driver.binary_location',
+            'user_data_dir': 'chrome.profile.user_data_dir',
+            'profile_directory': 'chrome.profile.profile_directory',
+            'contact_name': 'whatsapp.contact_name'
+        }
+        
+        missing_fields = []
+        for attr, config_path in required_fields.items():
+            if getattr(self, attr) is None:
+                missing_fields.append(config_path)
+        
+        if missing_fields:
+            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
+   
+        
+    def init_driver(self, headless: bool = True, silent: bool = True):
         """
         Initialize Selenium WebDriver for WhatsApp
         
         :param headless: Run Chrome in headless mode
         :param silent: Suppress logging
+        :return: Instance of WhatsAppNotifier
         """
         chrome_options = Options()
         chrome_options.binary_location = self.chrome_binary_location
@@ -86,13 +114,14 @@ class WhatsAppNotifier:
     def login(self):
         """
         Log in to WhatsApp Web
+        
+        :return: Instance of WhatsAppNotifier
         """
         if not self.whatsapp_driver:
             raise RuntimeError("WebDriver not initialized. Call init_driver() first.")
         
         self.whatsapp_driver.get("https://web.whatsapp.com/")
         try:
-            # Wait for the WhatsApp chat sidebar to appear (indicating a successful login)
             WebDriverWait(self.whatsapp_driver, 60).until(
                 EC.presence_of_element_located((By.XPATH, '//div[@id="side"]'))
             )
@@ -111,6 +140,7 @@ class WhatsAppNotifier:
         Open the chat for the given contact
         
         :param contact_name: Name of the contact to open chat with
+        :return: Instance of WhatsAppNotifier
         """
         try:
             search_box = WebDriverWait(self.whatsapp_driver, 30).until(
@@ -145,11 +175,11 @@ class WhatsAppNotifier:
         :param message: Message to send
         :param search_xpath: XPath for search box
         :param message_box_xpath: XPath for message input box
+        :return: Instance of WhatsAppNotifier
         """
         if not self.whatsapp_driver:
             raise RuntimeError("WebDriver not initialized. Call init_driver() first.")
-
-        # Use a lock to prevent overlapping calls
+        
         with self.send_lock:
             try:
                 if self.current_contact != contact_name:
@@ -218,8 +248,8 @@ Description:
         :param timestamp: Time of violation
         :param description: Violation description
         :param contact_name: Contact to send notification to (uses configured contact if not specified)
+        :return: Instance of WhatsAppNotifier
         """
-        # Use configured contact name if not provided
         if contact_name is None:
             contact_name = self.contact_name
         
@@ -246,6 +276,7 @@ Description:
         :param timestamp: Time of violation
         :param description: Violation description
         :param contact_name: Contact to send notification to
+        :return: Instance of WhatsAppNotifier
         """
         thread = threading.Thread(
             target=self.send_violation_notification,
@@ -259,6 +290,8 @@ Description:
     def close_driver(self):
         """
         Close the Selenium WebDriver
+        
+        :return: Instance of WhatsAppNotifier
         """
         if self.whatsapp_driver:
             self.whatsapp_driver.quit()

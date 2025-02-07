@@ -16,37 +16,15 @@ from pydantic import BaseModel
 from datetime import datetime
 import base64
 import torch
-from whatsapp_notifier import WhatsAppNotifier
 import yaml
+from whatsapp_notifier import WhatsAppNotifier
+from config_manager import ConfigManager
 
-with open('config/config.yaml', 'r') as config_file:
-    config = yaml.safe_load(config_file)
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, config.get('logging', {}).get('level', 'DEBUG').upper()),
-    filename=config.get('logging', {}).get('file_path', './fire_detection.log')
-)
-
-# Model configuration
-model_config = config.get('model', {}).get('fire_detection', {})
-stream_url = config.get('video', {}).get('stream_url', 'firedemo.mp4')
-output_directory = config.get('video', {}).get('output_directory', './output')
-
-# Device configuration
-device = torch.device('cuda' if config.get('device', {}).get('prefer_cuda', False) and torch.cuda.is_available() else 'cpu')
-print(f'Using device: {device}')
-
-# Load fire detection model
-fire_model = YOLO(model_config.get('path', "FireSmoke3.pt")).to(device)
-confidence_threshold = model_config.get('confidence_threshold', 0.5)
-
-# Notification settings
-alert_counter = config.get('notification', {}).get('initial_alert_counter', 1)
-default_priority = config.get('notification', {}).get('default_priority', 'High')
-
-# WhatsApp Notifier
+# Initialize configuration
+config_manager = ConfigManager('config/config.yaml')
+fire_model = YOLO(config_manager.model_settings['model_path']).to(config_manager.device_settings)
 whatsapp_notifier = WhatsAppNotifier('config/config.yaml')
+alert_counter = config_manager.notification_settings['initial_alert_counter']
 
 class UnCompressedVideoFrames(BaseModel):
     frame: Any
@@ -79,7 +57,7 @@ def process_frame(frame):
     violation_list = []
 
     try:
-        results = fire_model(frame, conf=0.5, stream=True)
+        results = fire_model(frame, conf=config_manager.model_settings['confidence_threshold'], stream=True)
         for r in results:
             boxes = r.boxes
             for box in boxes:
@@ -90,7 +68,7 @@ def process_frame(frame):
                 currentClass = fire_model.model.names[cls] if hasattr(fire_model, "model") and hasattr(fire_model.model, "names") else "fire"
                 logging.debug(f"Detected: {currentClass} with confidence {conf}")
 
-                if conf > 0.5:
+                if conf > config_manager.model_settings['confidence_threshold']:
                     cls_list.append(currentClass)
                     bbox_list.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2})
                     conf_list.append(conf)
@@ -112,7 +90,6 @@ def process_frame(frame):
         current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         alert_id = f"ALERT{alert_counter:03d}"
         description_text = f"Violations detected: {', '.join(violation_list)}"
-        # Use the new WhatsApp Notifier to send async notification
         whatsapp_notifier.send_violation_notification_async(
             alert_id, 
             violation_list, 
@@ -131,7 +108,7 @@ def read_image_from_bytes(image_bytes: bytes) -> np.ndarray:
     return image
 
 def generate_frames():
-    cap = cv2.VideoCapture(stream_url)
+    cap = cv2.VideoCapture(config_manager.video_settings['stream_url'])
     if not cap.isOpened():
         logging.error("Error: Couldn't open video file.")
         return
@@ -255,10 +232,9 @@ async def meta_data_text(request: Request, data: UnCompressedVideoFrames):
 
 @app.on_event("startup")
 def startup_event():
-    contact_name = config.get('whatsapp', {}).get('contact_name', 'Fares Voda')
     whatsapp_notifier.init_driver(headless=False, silent=True) \
                       .login() \
-                      .open_contact_chat(contact_name)
+                      .open_contact_chat(config_manager.whatsapp_settings['contact_name'])
 
 if __name__ == "__main__":
     uvicorn.run("TestAPI:app", host="0.0.0.0", port=8000, reload=True)

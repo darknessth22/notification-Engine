@@ -11,6 +11,7 @@ import threading
 import tempfile
 import yaml
 from typing import Dict, Any
+import pyperclip  # add this at the top of your file
 
 class WhatsAppNotifier:
     def __init__(self, config_path: str = 'config/config.yaml'):
@@ -164,24 +165,19 @@ class WhatsAppNotifier:
         return self
     
     def send_message(self, 
-                     contact_name, 
-                     message, 
-                     search_xpath='//div[@contenteditable="true"][@data-tab="3"]',
-                     message_box_xpath='//div[@contenteditable="true"][@data-tab="10"]'):
+                 contact_name, 
+                 message, 
+                 search_xpath='//div[@contenteditable="true"][@data-tab="3"]',
+                 message_box_xpath='//div[@contenteditable="true"][@data-tab="10"]'):
         """
         Send a WhatsApp message to the specified contact
-        
-        :param contact_name: Name of the contact
-        :param message: Message to send
-        :param search_xpath: XPath for search box
-        :param message_box_xpath: XPath for message input box
-        :return: Instance of WhatsAppNotifier
         """
         if not self.whatsapp_driver:
             raise RuntimeError("WebDriver not initialized. Call init_driver() first.")
-        
+
         with self.send_lock:
             try:
+                # Open the chat if it's not already open.
                 if self.current_contact != contact_name:
                     search_box = WebDriverWait(self.whatsapp_driver, 30).until(
                         EC.presence_of_element_located((By.XPATH, search_xpath))
@@ -195,18 +191,23 @@ class WhatsAppNotifier:
                         EC.element_to_be_clickable((By.XPATH, f'//span[@title="{contact_name}"]'))
                     )
                     contact.click()
-                    time.sleep(2) 
-
+                    time.sleep(2)
                     self.current_contact = contact_name
-                    
+
+                # Locate the message box and click it.
                 message_box = WebDriverWait(self.whatsapp_driver, 30).until(
                     EC.presence_of_element_located((By.XPATH, message_box_xpath))
                 )
                 message_box.click()
 
-                for line in message.split("\n"):
-                    message_box.send_keys(line)
-                    message_box.send_keys(Keys.SHIFT, Keys.ENTER)
+                # Copy the entire message to the clipboard.
+                pyperclip.copy(message)
+                
+                # Paste the message using the paste keyboard shortcut.
+                # (Use Keys.CONTROL for Windows/Linux; use Keys.COMMAND on macOS.)
+                message_box.send_keys(Keys.CONTROL, "v")
+                
+                # Finally, send the message.
                 message_box.send_keys(Keys.ENTER)
                 logging.info(f"Message sent to {contact_name}!")
             except Exception as e:
@@ -215,7 +216,7 @@ class WhatsAppNotifier:
                     logging.error("Page source snippet: " + self.whatsapp_driver.page_source[:500])
                 except Exception:
                     logging.error("Could not retrieve page source during message sending.")
-        
+
         return self
     
     def create_notification_message(self, alert_id, alert_type, timestamp, priority, description):

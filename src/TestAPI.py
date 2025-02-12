@@ -25,6 +25,7 @@ config_manager = ConfigManager('config/config.yaml')
 fire_model = YOLO(config_manager.model_settings['model_path']).to(config_manager.device_settings)
 whatsapp_notifier = WhatsAppNotifier('config/config.yaml')
 alert_counter = config_manager.notification_settings['initial_alert_counter']
+detection_status = {}
 
 class UnCompressedVideoFrames(BaseModel):
     frame: Any
@@ -49,15 +50,20 @@ app.add_middleware(
 logging.basicConfig(level=logging.DEBUG)
 
 def process_frame(frame):
-    global alert_counter
+    global alert_counter, detection_status
     return_dict = {}
     cls_list = []
     bbox_list = []
     conf_list = []
     violation_list = []
 
+    # Detection Stage 
     try:
-        results = fire_model(frame, conf=config_manager.model_settings['confidence_threshold'], stream=True)
+        results = fire_model(
+            frame, 
+            conf=config_manager.model_settings['confidence_threshold'], 
+            stream=True
+        )
         for r in results:
             boxes = r.boxes
             for box in boxes:
@@ -65,7 +71,11 @@ def process_frame(frame):
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 conf = float(box.conf[0])
                 cls = int(box.cls[0])
-                currentClass = fire_model.model.names[cls] if hasattr(fire_model, "model") and hasattr(fire_model.model, "names") else "fire"
+                currentClass = (
+                    fire_model.model.names[cls]
+                    if hasattr(fire_model, "model") and hasattr(fire_model.model, "names")
+                    else "fire"
+                )
                 logging.debug(f"Detected: {currentClass} with confidence {conf}")
 
                 if conf > config_manager.model_settings['confidence_threshold']:
@@ -73,10 +83,11 @@ def process_frame(frame):
                     bbox_list.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2})
                     conf_list.append(conf)
                     violation_list.append(currentClass)
-
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, f'{currentClass} {conf:.2f}', (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                    cv2.putText(
+                        frame, f'{currentClass} {conf:.2f}', (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2
+                    )
     except Exception as e:
         logging.error("Error in violation detection: " + str(e))
         return_dict["error"] = str(e)
@@ -86,21 +97,41 @@ def process_frame(frame):
     return_dict["conf"] = conf_list
     return_dict["violation"] = violation_list
 
-    if violation_list:
-        current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # ----- Flag & Notification Logic -----
+    current_time = datetime.now()
+    # Create a set of unique violation classes detected in this frame.
+    current_detected = set(violation_list)
+    new_detections = []
+
+    for violation in current_detected:
+        # If the violation is not yet flagged or is flagged as inactive, treat it as new.
+        if violation not in detection_status or detection_status[violation]["active"] is False:
+            detection_status[violation] = {"active": True, "timestamp": current_time}
+            new_detections.append(violation)
+        else:
+            # Already active; if more than 10 seconds have passed, update the timestamp.
+            elapsed = (current_time - detection_status[violation]["timestamp"]).total_seconds()
+            if elapsed >= 10:
+                detection_status[violation]["timestamp"] = current_time           
+    # If there are any new detections in this frame, send a notification.
+    if new_detections:
         alert_id = f"ALERT{alert_counter:03d}"
-        description_text = f"Violations detected: {', '.join(violation_list)}"
+        alert_counter += 1
+        description_text = "New violation(s) detected: " + ", ".join(new_detections)
         whatsapp_notifier.send_violation_notification_async(
-            alert_id, 
-            violation_list, 
-            current_timestamp, 
+            alert_id,
+            new_detections,
+            current_time.strftime("%Y-%m-%d %H:%M:%S"),
             description_text
         )
-        alert_counter += 1
+    # For any violation that was flagged previously but is not detected in the current frame,
+    # mark its flag as inactive so that a future detection will be treated as new.
+    for flagged_violation in list(detection_status.keys()):
+        if flagged_violation not in current_detected:
+            detection_status[flagged_violation]["active"] = False
+            detection_status[flagged_violation]["timestamp"] = None
 
     return frame, return_dict
-
-
 
 def read_image_from_bytes(image_bytes: bytes) -> np.ndarray:
     image_array = np.frombuffer(image_bytes, np.uint8)

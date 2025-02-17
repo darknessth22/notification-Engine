@@ -26,7 +26,6 @@ fire_model = YOLO(config_manager.model_settings['model_path']).to(config_manager
 whatsapp_notifier = WhatsAppNotifier('config/config.yaml')
 alert_counter = config_manager.notification_settings['initial_alert_counter']
 detection_status = {}
-
 class UnCompressedVideoFrames(BaseModel):
     frame: Any
     timestamp: datetime
@@ -97,39 +96,44 @@ def process_frame(frame):
     return_dict["conf"] = conf_list
     return_dict["violation"] = violation_list
 
-    # ----- Flag & Notification Logic -----
+    # Modified Flag & Notification Logic
     current_time = datetime.now()
-    # Create a set of unique violation classes detected in this frame.
     current_detected = set(violation_list)
     new_detections = []
 
+    # Check current detections
     for violation in current_detected:
-        # If the violation is not yet flagged or is flagged as inactive, treat it as new.
-        if violation not in detection_status or detection_status[violation]["active"] is False:
-            detection_status[violation] = {"active": True, "timestamp": current_time}
+        if violation not in detection_status:
+            # First detection of this violation
+            detection_status[violation] = current_time
             new_detections.append(violation)
         else:
-            # Already active; if more than 10 seconds have passed, update the timestamp.
-            elapsed = (current_time - detection_status[violation]["timestamp"]).total_seconds()
+            # Check if 10 seconds have passed since last notification
+            elapsed = (current_time - detection_status[violation]).total_seconds()
             if elapsed >= 10:
-                detection_status[violation]["timestamp"] = current_time           
-    # If there are any new detections in this frame, send a notification.
+                # Update timestamp and trigger new notification
+                detection_status[violation] = current_time
+                new_detections.append(violation)
+
+    # Check for violations that need to be cleared
+    for violation in list(detection_status.keys()):
+        if violation not in current_detected:
+            elapsed = (current_time - detection_status[violation]).total_seconds()
+            if elapsed >= 10:
+                # Remove violations that haven't been seen for 10s since last alert
+                del detection_status[violation]
+
+    # Send notifications if needed
     if new_detections:
         alert_id = f"ALERT{alert_counter:03d}"
         alert_counter += 1
-        description_text = "New violation(s) detected: " + ", ".join(new_detections)
+        description_text = "Violation(s) detected: " + ", ".join(new_detections)
         whatsapp_notifier.send_violation_notification_async(
             alert_id,
             new_detections,
             current_time.strftime("%Y-%m-%d %H:%M:%S"),
             description_text
         )
-    # For any violation that was flagged previously but is not detected in the current frame,
-    # mark its flag as inactive so that a future detection will be treated as new.
-    for flagged_violation in list(detection_status.keys()):
-        if flagged_violation not in current_detected:
-            detection_status[flagged_violation]["active"] = False
-            detection_status[flagged_violation]["timestamp"] = None
 
     return frame, return_dict
 

@@ -13,7 +13,7 @@ video:
 # Chrome and WebDriver Configuration
 chrome:
   driver:
-    executable_path: "/home/dark/work/test/chromedriver-linux64/chromedriver"
+    executable_path: "/home/dark/chromedriver-linux64/chromedriver"
     binary_location: "/usr/bin/chromium-browser"
   
   profile:

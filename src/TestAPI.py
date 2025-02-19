@@ -267,7 +267,7 @@ async def meta_data_text(request: Request, data: UnCompressedVideoFrames):
 
 @app.on_event("startup")
 def startup_event():
-    whatsapp_notifier.init_driver(headless=False, silent=True) \
+    whatsapp_notifier.init_driver(headless=True, silent=True) \
                       .login() \
                       .open_contact_chat(config_manager.whatsapp_settings['contact_name'])
 

@@ -128,12 +128,12 @@ def process_frame(frame):
         alert_id = f"ALERT{alert_counter:03d}"
         alert_counter += 1
         description_text = "Violation(s) detected: " + ", ".join(new_detections)
-        whatsapp_notifier.send_violation_notification_async(
-            alert_id,
-            new_detections,
-            current_time.strftime("%Y-%m-%d %H:%M:%S"),
-            description_text
-        )
+        whatsapp_notifier.send_violation_notification(
+        alert_id,
+        new_detections,
+        current_time.strftime("%Y-%m-%d %H:%M:%S"),
+        description_text
+    )
 
     return frame, return_dict
 

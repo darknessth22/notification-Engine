@@ -7,11 +7,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import tempfile
 import yaml
 from typing import Dict, Any
-import pyperclip  # add this at the top of your file
-import threading
 class WhatsAppNotifier:
     def __init__(self, config_path: str = 'config/config.yaml'):
         """
@@ -34,7 +31,6 @@ class WhatsAppNotifier:
         self.whatsapp_driver = None
         self.current_contact = None
         self._validate_config()
-        self.lock = threading.Lock()
         logging.basicConfig(level=logging.DEBUG)    
     def _load_config(self) -> Dict[str, Any]:
         """
@@ -181,55 +177,49 @@ class WhatsAppNotifier:
         if not self.whatsapp_driver:
             raise RuntimeError("WebDriver not initialized. Call init_driver() first.")
 
-        with self.lock:
-            try:
-                # Open the chat if it's not already open
-                if self.current_contact != contact_name:
-                    search_box = WebDriverWait(self.whatsapp_driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, search_xpath))
-                    )
-                    search_box.clear()
-                    search_box.send_keys(contact_name + Keys.ENTER)
-                    
-                    contact_xpath = f'//span[@title="{contact_name}"]'
-                    contact = WebDriverWait(self.whatsapp_driver, 2).until(
-                        EC.element_to_be_clickable((By.XPATH, contact_xpath))
-                    )
-                    contact.click()
-                    self.current_contact = contact_name
-
-                # Find message box
-                chat_box = WebDriverWait(self.whatsapp_driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, message_box_xpath))
+        try:
+            # Open the chat if it's not already open
+            if self.current_contact != contact_name:
+                search_box = WebDriverWait(self.whatsapp_driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, search_xpath))
                 )
+                search_box.clear()
+                search_box.send_keys(contact_name + Keys.ENTER)
                 
-                # Clear any existing text
-                chat_box.clear()
-                
-                # Use Shift+Enter for line breaks within the message
-                lines = message.split('\n')
-                for i, line in enumerate(lines):
-                    chat_box.send_keys(line)
-                    if i < len(lines) - 1:  # Don't add newline after the last line
-                        chat_box.send_keys(Keys.SHIFT + Keys.ENTER)
-                
-                # Send the message
-                chat_box.send_keys(Keys.ENTER)
-                
-                logging.info(f"Message sent to {contact_name}")
-                
-            except Exception as e:
-                logging.error(f"Error sending message: {str(e)}")
-                self.handle_error(e)
+                contact_xpath = f'//span[@title="{contact_name}"]'
+                contact = WebDriverWait(self.whatsapp_driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, contact_xpath))
+                )
+                contact.click()
+                self.current_contact = contact_name
+
+            # Find message box
+            chat_box = WebDriverWait(self.whatsapp_driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, message_box_xpath))
+            )
+            
+            # Clear any existing text
+            chat_box.clear()
+            
+            # Use Shift+Enter for line breaks within the message
+            lines = message.split('\n')
+            for i, line in enumerate(lines):
+                chat_box.send_keys(line)
+                if i < len(lines) - 1:  # Don't add newline after the last line
+                    chat_box.send_keys(Keys.SHIFT + Keys.ENTER)
+            
+            # Send the message
+            chat_box.send_keys(Keys.ENTER)
+            
+            logging.info(f"Message sent to {contact_name}")
+            
+        except Exception as e:
+            logging.error(f"Error sending message: {str(e)}")
+            self.handle_error(e)
                 
         return self
     
-    def create_notification_message(self, alert_id, alert_type, timestamp, description):
-        """
-        Create a properly formatted single message
-        """
-        return f"*ALERT NOTIFICATION*{Keys.SHIFT + Keys.ENTER}{Keys.SHIFT + Keys.ENTER}Alert ID: {alert_id}{Keys.SHIFT + Keys.ENTER}Type: {alert_type}{Keys.SHIFT + Keys.ENTER}Timestamp: {timestamp}{Keys.SHIFT + Keys.ENTER}{Keys.SHIFT + Keys.ENTER}{description}"
-    
+
     def send_violation_notification(self, alert_id, violation_types, timestamp, description, contact_name=None):
         """
         Send a violation notification to a specific contact
@@ -245,12 +235,12 @@ class WhatsAppNotifier:
             contact_name = self.contact_name
         
         violation_type_str = ', '.join(violation_types)
-        message = self.create_notification_message(
-            alert_id=alert_id,
-            alert_type=violation_type_str,
-            timestamp=timestamp,
-            priority="High",
-            description=description
+        message = (
+            "*ALERT NOTIFICATION*\n\n"
+            f"Alert ID: {alert_id}\n"
+            f"Type: {violation_type_str}\n"
+            f"Timestamp: {timestamp}\n\n"
+            f"{description}"
         )
         
         self.send_message(contact_name, message)
@@ -258,31 +248,6 @@ class WhatsAppNotifier:
         
         return self
     
-    def send_violation_notification_async(self, alert_id, violation_types, timestamp, description, contact_name=None):
-        """
-        Send violation notification as a single message
-        """
-        if contact_name is None:
-            contact_name = self.contact_name
-        
-        violation_type_str = ', '.join(violation_types)
-        message = (
-            "*ALERT NOTIFICATION*\n\n"
-            f"Alert ID: {alert_id}\n"
-            f"Type: {violation_type_str}\n"
-            f"Timestamp: {timestamp}\n"
-            f"Violation(s) detected: {violation_type_str}"
-        )
-        
-        thread = threading.Thread(
-            target=self.send_message,
-            args=(contact_name, message),
-            daemon=True
-        )
-        thread.start()
-        
-        return self
-
     def handle_error(self, error):
         """
         Handle errors during message sending

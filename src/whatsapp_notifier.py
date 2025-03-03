@@ -11,9 +11,8 @@ from typing import Dict, Any
 import asyncio
 
 class WhatsAppNotifier:
-    def __init__(self, config_path: str = 'config/config.yaml'):
-        self.config_path = config_path
-        self.config = self._load_config()
+    def __init__(self, config: dict):
+        self.config = config
         chrome_config = self.config.get('chrome', {})
         whatsapp_config = self.config.get('whatsapp', {})
         driver_config = chrome_config.get('driver', {})
@@ -29,6 +28,7 @@ class WhatsAppNotifier:
         self.notification_queue = asyncio.Queue()
         self.running = False
         logging.basicConfig(level=logging.DEBUG)
+        
 
     def _load_config(self) -> Dict[str, Any]:
         try:

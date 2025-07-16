@@ -2,13 +2,13 @@
 # Model Configuration
 model:
   fire_detection:
-    path: "models/FireSmoke3.pt"
+    path: "apps/ai_detection/models/FireSmoke3.pt"
     confidence_threshold: 0.5
 
 # Video Input Configuration
 video:
-  stream_url: "video/firetest3.mp4"
-  output_directory: "./output"
+  stream_url: "data/videos/firetest3.mp4"
+  output_directory: "data/violations"
 
 # Chrome and WebDriver Configuration
 chrome:
@@ -17,7 +17,7 @@ chrome:
     binary_location: "/usr/bin/chromium-browser"
   
   profile:
-    user_data_dir: "/home/dark/chrome_profile"
+    user_data_dir: "/home/dark/chrome_profile_temp"
     profile_directory: "Default"
 
 # WhatsApp Notification Configuration
@@ -29,7 +29,7 @@ whatsapp:
 server:
   host: "0.0.0.0"
   port: 8000
-  reload: true
+  reload: false
 
 # Logging Configuration
 logging:

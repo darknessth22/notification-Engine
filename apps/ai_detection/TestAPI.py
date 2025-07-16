@@ -186,18 +186,7 @@ class TestAPI:
         """
         await self.whatsapp_notifier.shutdown()
         self.thread_pool.shutdown(wait=True)
-
-    def run(self):
-        """
-        Run the FastAPI app using uvicorn.
-        """
-        uvicorn.run(
-            self.app,
-            host=self.config_manager.config.get("server", {}).get("host", "0.0.0.0"),
-            port=self.config_manager.config.get("server", {}).get("port", 8000),
-            reload=self.config_manager.config.get("server", {}).get("reload", False)
-        )
-
+app_instance = TestAPI()
+app = app_instance.app
 if __name__ == "__main__":
-    api = TestAPI("config/config.yaml")
-    api.run()
+    uvicorn.run("TestAPI:app", host="0.0.0.0", port=8000, reload=True)

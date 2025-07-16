@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  whatsapp-gateway:
+    build: .
+    ports:
+      - "8000:8000"  # Python FastAPI
+      - "3000:3000"  # Node.js Baileys (optional, mainly for debugging)
+    volumes:
+      - whatsapp_auth:/app/auth_info  # Persistent WhatsApp authentication
+      - ./logs:/var/log               # Container logs
+      - ./data:/app/data              # Data directory for videos, images, violations
+    environment:
+      - NODE_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  whatsapp_auth:
+    driver: local

@@ -9,6 +9,14 @@ env/
 .env/
 .venv/
 
+# Node modules
+node_modules/
+
+# Docker volumes and logs
+logs/
+auth_info/
+*.session
+
 # Model files
 *.pt
 *.pth

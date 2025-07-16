@@ -10,7 +10,7 @@ import torch
 from typing import Dict, Any
 
 class ConfigManager:
-    def __init__(self, config_path= 'config/config.yaml'):
+    def __init__(self, config_path= '../../config/config.yaml'):
         """
         Initialize configuration manager
 

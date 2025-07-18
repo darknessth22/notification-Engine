@@ -2,28 +2,21 @@
 # Model Configuration
 model:
   fire_detection:
-    path: "apps/ai_detection/models/FireSmoke3.pt"
+    path: "apps/ai_detection/model/smoke-v2-v12n-20250521.pt"
     confidence_threshold: 0.5
 
 # Video Input Configuration
 video:
-  stream_url: "data/videos/firetest3.mp4"
+  stream_url: "data/videos/Security Camera Video of Fire at WLNE.mp4"
   output_directory: "data/violations"
 
-# Chrome and WebDriver Configuration
-chrome:
-  driver:
-    executable_path: "/home/dark/chromedriver-linux64/chromedriver"
-    binary_location: "/usr/bin/chromium-browser"
-  
-  profile:
-    user_data_dir: "/home/dark/chrome_profile_temp"
-    profile_directory: "Default"
-
-# WhatsApp Notification Configuration
+# WhatsApp API Configuration
 whatsapp:
+  api:
+    python_server_url: "http://localhost:8000"
+    baileys_server_url: "http://localhost:3000"
   contact_name: "Fares Voda"
-  phone_number: "+201553641192"
+  phone_number: "+201025939307"
 
 # Server Configuration
 server:
@@ -33,8 +26,8 @@ server:
 
 # Logging Configuration
 logging:
-  level: "DEBUG"
-  file_path: "./fire_detection.log"
+  level: "INFO"
+  file_path: "logs/fire_detection.log"
 
 # Detection Notification Settings
 notification:

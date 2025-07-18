@@ -4,39 +4,35 @@ import cv2
 import logging
 import asyncio
 import uvicorn
+import httpx
+import yaml
+import os
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from whatsapp_notifier import WhatsAppNotifier
-from config_manager import ConfigManager
 from ultralytics import YOLO
 
 class TestAPI:
     def __init__(self, config_path: str = "config/config.yaml"):
-        # Load the configuration using your ConfigManager.
-        self.config_manager = ConfigManager(config_path)
-        self.config = self.config_manager.config
+        # Load configuration directly
+        with open(config_path, 'r') as file:
+            self.config = yaml.safe_load(file)
+        
+        # Initialize the fire detection model
+        model_path = self.config['model']['fire_detection']['path']
+        self.confidence_threshold = self.config['model']['fire_detection']['confidence_threshold']
+        device = "cuda" if self.config.get('device', {}).get('prefer_cuda', False) else "cpu"
+        
+        self.fire_model = YOLO(model_path).to(device)
 
-        # Initialize the fire detection model.
-        self.fire_model = YOLO(self.config_manager.model_settings['model_path']).to(
-            self.config_manager.device_settings
-        )
+        # WhatsApp configuration
+        self.whatsapp_config = self.config.get("whatsapp", {})
+        self.whatsapp_api_url = self.whatsapp_config.get("api", {}).get("python_server_url", "http://localhost:8000")
+        
+        self.alert_counter = self.config.get("notification", {}).get("initial_alert_counter", 1)
+        self.detection_status = {}  # For tracking detection timestamps
 
-        # Build a notifications configuration dictionary from the full config.
-        notifications_config = {
-            "chrome": self.config.get("chrome", {}),
-            "whatsapp": self.config.get("whatsapp", {}),
-            "notification": self.config.get("notification", {})
-        }
-        # Instantiate the WhatsApp notifier with only the notifications config.
-        self.whatsapp_notifier = WhatsAppNotifier(notifications_config)
-
-        self.alert_counter = self.config_manager.notification_settings['initial_alert_counter']
-        self.detection_status = {}  # For tracking detection timestamps.
-        self.thread_pool = ThreadPoolExecutor(max_workers=4)
-
-        # Create and configure the FastAPI app.
+        # Create and configure the FastAPI app
         self.app = FastAPI()
         self._configure_app()
         self._setup_routes()
@@ -59,6 +55,96 @@ class TestAPI:
         # Define the video feed endpoint.
         self.app.get("/video_feed")(self.video_feed)
 
+    async def send_whatsapp_notification(self, alert_id: str, violations: list, timestamp: str, description: str, detection_frame=None):
+        """
+        Send WhatsApp notification using Baileys API with optional detection frame
+        """
+        try:
+            phone_number = self.whatsapp_config.get("phone_number")
+            if not phone_number:
+                logging.error("No phone number configured for WhatsApp notifications")
+                return False
+
+            # Create notification message
+            message = f"🚨 {alert_id} - Fire/Smoke Detection Alert\n\n"
+            message += f"⚠️ {description}\n"
+            message += f"🕐 Time: {timestamp}\n"
+            message += f"📍 Location: Security Camera\n\n"
+            message += "Please take immediate action!"
+
+            # If detection frame is provided, save it and send as image
+            if detection_frame is not None:
+                # Ensure data directory exists
+                os.makedirs("data/images", exist_ok=True)
+                
+                # Save the detection frame
+                image_filename = f"detection_{alert_id}_{timestamp.replace(':', '-').replace(' ', '_')}.jpg"
+                image_path = f"data/images/{image_filename}"
+                
+                # Save frame to file
+                success = cv2.imwrite(image_path, detection_frame)
+                if not success:
+                    logging.error(f"Failed to save detection image: {image_path}")
+                    return False
+
+                # Send image with caption via Baileys API
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    with open(image_path, 'rb') as image_file:
+                        files = {
+                            'image': (image_filename, image_file, 'image/jpeg')
+                        }
+                        data = {
+                            'phone': phone_number,
+                            'caption': message
+                        }
+                        
+                        response = await client.post(
+                            f"{self.whatsapp_api_url}/send-image",
+                            files=files,
+                            data=data
+                        )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("success"):
+                        logging.info(f"WhatsApp image notification sent successfully: {alert_id}")
+                        return True
+                    else:
+                        logging.error(f"Failed to send WhatsApp image notification: {result.get('message')}")
+                        return False
+                else:
+                    logging.error(f"WhatsApp API error: {response.status_code} - {response.text}")
+                    return False
+            else:
+                # Send text message only
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        f"{self.whatsapp_api_url}/send",
+                        json={
+                            "phone": phone_number,
+                            "message": message
+                        }
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            logging.info(f"WhatsApp notification sent successfully: {alert_id}")
+                            return True
+                        else:
+                            logging.error(f"Failed to send WhatsApp notification: {result.get('message')}")
+                            return False
+                    else:
+                        logging.error(f"WhatsApp API error: {response.status_code} - {response.text}")
+                        return False
+
+        except httpx.TimeoutException:
+            logging.error("Timeout while sending WhatsApp notification")
+            return False
+        except Exception as e:
+            logging.error(f"Error sending WhatsApp notification: {str(e)}")
+            return False
+
     async def process_frame(self, frame):
         """
         Process a frame using the fire model, draw detections, and send a notification if needed.
@@ -71,12 +157,8 @@ class TestAPI:
         }
 
         try:
-            loop = asyncio.get_running_loop()
-            # Run model inference in the thread pool.
-            results = await loop.run_in_executor(
-                self.thread_pool,
-                lambda: self.fire_model(frame, conf=self.config_manager.model_settings['confidence_threshold'], stream=True)
-            )
+            # Run model inference directly (no threading)
+            results = self.fire_model(frame, conf=self.confidence_threshold, stream=True)
             
             for r in results:
                 boxes = r.boxes
@@ -89,7 +171,7 @@ class TestAPI:
                         if hasattr(self.fire_model, "model") and hasattr(self.fire_model.model, "names")
                         else "fire"
                     )
-                    if conf > self.config_manager.model_settings['confidence_threshold']:
+                    if conf > self.confidence_threshold:
                         return_dict["class_label"].append(current_class)
                         return_dict["bbox"].append({"x1": x1, "y1": y1, "x2": x2, "y2": y2})
                         return_dict["conf"].append(conf)
@@ -127,11 +209,16 @@ class TestAPI:
             alert_id = f"ALERT{self.alert_counter:03d}"
             self.alert_counter += 1
             description = "Violation(s) detected: " + ", ".join(new_detections)
-            await self.whatsapp_notifier.send_violation_notification_async(
+            
+            # Create a copy of the frame for notification (to avoid modification)
+            notification_frame = frame.copy()
+            
+            await self.send_whatsapp_notification(
                 alert_id,
                 new_detections,
                 current_time.strftime("%Y-%m-%d %H:%M:%S"),
-                description
+                description,
+                notification_frame
             )
         return frame, return_dict
 
@@ -139,21 +226,20 @@ class TestAPI:
         """
         Capture video frames, process each frame, and yield the encoded frame.
         """
-        cap = cv2.VideoCapture(self.config_manager.config.get("video", {}).get("stream_url"))
+        cap = cv2.VideoCapture(self.config.get("video", {}).get("stream_url"))
         if not cap.isOpened():
             logging.error("Error: Couldn't open video file.")
             return
 
         try:
             while True:
-                loop = asyncio.get_running_loop()
-                ret, frame = await loop.run_in_executor(self.thread_pool, cap.read)
+                ret, frame = cap.read()
                 if not ret:
                     logging.info("End of video stream.")
                     break
 
                 frame, metadata = await self.process_frame(frame)
-                success, buffer = await loop.run_in_executor(self.thread_pool, cv2.imencode, '.jpg', frame)
+                success, buffer = cv2.imencode('.jpg', frame)
                 if not success:
                     logging.error("Failed to encode frame.")
                     break
@@ -162,7 +248,7 @@ class TestAPI:
                        b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n\r\n')
                 await asyncio.sleep(0.01)
         finally:
-            await asyncio.get_running_loop().run_in_executor(self.thread_pool, cap.release)
+            cap.release()
 
     async def video_feed(self, request: Request):
         """
@@ -175,18 +261,28 @@ class TestAPI:
 
     async def startup_event(self):
         """
-        Initialize the notifier and start its notification worker.
+        Check WhatsApp API connection on startup.
         """
-        self.whatsapp_notifier.init_driver(headless=True, silent=True).login()
-        asyncio.create_task(self.whatsapp_notifier.start_notification_worker())
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{self.whatsapp_api_url}/health")
+                if response.status_code == 200:
+                    health_data = response.json()
+                    if health_data.get("baileys_connected"):
+                        logging.info("WhatsApp API is connected and ready")
+                    else:
+                        logging.warning("WhatsApp API is running but not connected. QR code scan may be required.")
+                else:
+                    logging.error("WhatsApp API is not responding")
+        except Exception as e:
+            logging.error(f"Failed to check WhatsApp API status: {e}")
 
     async def shutdown_event(self):
         """
-        Shutdown the notifier and thread pool.
+        Cleanup on shutdown.
         """
-        await self.whatsapp_notifier.shutdown()
-        self.thread_pool.shutdown(wait=True)
+        logging.info("Shutting down TestAPI")
 app_instance = TestAPI()
 app = app_instance.app
 if __name__ == "__main__":
-    uvicorn.run("TestAPI:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("TestAPI:app", host="0.0.0.0", port=8001, reload=True)

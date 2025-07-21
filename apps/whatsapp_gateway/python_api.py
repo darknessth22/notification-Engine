@@ -33,6 +33,10 @@ class SendImageUrlRequest(BaseModel):
     imageUrl: str
     caption: Optional[str] = None
 
+class SendVideoRequest(BaseModel):
+    phone: str
+    caption: Optional[str] = None
+
 class SendMessageResponse(BaseModel):
     success: bool
     message: str
@@ -48,6 +52,17 @@ class SendImageResponse(BaseModel):
     fileName: Optional[str] = None
     fileType: Optional[str] = None
     imageUrl: Optional[str] = None
+    timestamp: str
+
+class SendVideoResponse(BaseModel):
+    success: bool
+    message: str
+    messageId: Optional[str] = None
+    to: Optional[str] = None
+    fileName: Optional[str] = None
+    fileType: Optional[str] = None
+    videoUrl: Optional[str] = None
+    timestamp: str
     timestamp: str
 
 class HealthResponse(BaseModel):
@@ -83,6 +98,7 @@ async def root():
             "send": "/send",
             "send_image": "/send-image",
             "send_image_url": "/send-image-url",
+            "send_video": "/send-video",
             "status": "/status"
         }
     }
@@ -335,6 +351,98 @@ async def send_image_from_url(request: SendImageUrlRequest):
         raise HTTPException(
             status_code=504,
             detail="Request timeout while sending image from URL"
+        )
+    except httpx.RequestError as e:
+        logger.error(f"Request error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to connect to Baileys server"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
+
+@app.post("/send-video", response_model=SendVideoResponse)
+async def send_video(
+    phone: str = Form(...),
+    video: UploadFile = File(...),
+    caption: Optional[str] = Form(None)
+):
+    """Send a video via WhatsApp"""
+    try:
+        # Validate input
+        if not phone:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number is required"
+            )
+
+        # Check if Baileys server is healthy first
+        baileys_health = await check_baileys_health()
+        if not baileys_health["healthy"]:
+            raise HTTPException(
+                status_code=503,
+                detail="Baileys server is not responding"
+            )
+
+        if not baileys_health["connected"]:
+            raise HTTPException(
+                status_code=503,
+                detail="WhatsApp is not connected. Please scan QR code first."
+            )
+
+        # Prepare multipart form data - use 'image' field since Baileys endpoint is /send-image
+        # Force video/mp4 MIME type for MP4 files
+        content_type = video.content_type
+        if video.filename and video.filename.lower().endswith('.mp4'):
+            content_type = 'video/mp4'
+        
+        files = {"image": (video.filename, await video.read(), content_type)}
+        data = {"phone": phone}
+        if caption:
+            data["caption"] = caption
+            
+        logger.info(f"Sending video: {video.filename}, content_type: {content_type}, size: {len(files['image'][1])} bytes")
+
+        # Forward request to Baileys server (use send-image endpoint which handles videos too)
+        async with httpx.AsyncClient(timeout=120.0) as client:  # Longer timeout for videos
+            response = await client.post(
+                f"{BAILEYS_SERVER_URL}/send-image",
+                files=files,
+                data=data
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Video sent successfully to {phone}")
+                
+                return SendVideoResponse(
+                    success=data["success"],
+                    message=data["message"],
+                    messageId=data.get("messageId"),
+                    to=data.get("to"),
+                    fileName=data.get("fileName"),
+                    fileType=data.get("fileType"),
+                    videoUrl=data.get("videoUrl"),
+                    timestamp=data["timestamp"]
+                )
+            else:
+                error_data = response.json()
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=error_data.get("error", "Failed to send video")
+                )
+
+    except httpx.TimeoutException:
+        logger.error("Timeout while sending video to Baileys server")
+        raise HTTPException(
+            status_code=504,
+            detail="Request timeout while sending video"
         )
     except httpx.RequestError as e:
         logger.error(f"Request error: {e}")

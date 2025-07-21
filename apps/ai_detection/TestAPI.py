@@ -35,8 +35,6 @@ class TestAPI:
         
         # Log notification modes
         notification_modes = []
-        if self.send_text:
-            notification_modes.append("text messages")
         if self.send_images:
             notification_modes.append("images via endpoint")
         if self.send_videos:
@@ -44,6 +42,7 @@ class TestAPI:
         
         notification_mode = " + ".join(notification_modes) if notification_modes else "no notifications"
         logging.info(f"WhatsApp notification mode: {notification_mode}")
+        logging.info("Text messages available via /send-message-to-whatsapp endpoint only")
         
         self.alert_counter = self.config.get("notification", {}).get("initial_alert_counter", 1)
         self.detection_status = {}  # For tracking detection timestamps
@@ -209,7 +208,7 @@ class TestAPI:
 
     async def send_message_to_whatsapp_endpoint(self, request: Request):
         """
-        Endpoint to send text messages to WhatsApp
+        Endpoint to send text messages directly to WhatsApp API
         Expected: JSON with 'message' and optional 'alert_id'
         """
         try:
@@ -224,9 +223,9 @@ class TestAPI:
             if not phone_number:
                 return {"success": False, "message": "No phone number configured"}
             
-            logging.info(f"Received message to send: {alert_id}")
+            logging.info(f"Received message to send directly to WhatsApp: {alert_id}")
             
-            # Send message to WhatsApp
+            # Send message directly to WhatsApp API
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.whatsapp_api_url}/send",
@@ -239,11 +238,11 @@ class TestAPI:
             if response.status_code == 200:
                 result = response.json()
                 if result.get("success"):
-                    logging.info(f"Message sent successfully via endpoint: {alert_id}")
+                    logging.info(f"Message sent successfully directly to WhatsApp: {alert_id}")
                     return {"success": True, "message": "Message sent successfully", "alert_id": alert_id}
                 else:
                     error_msg = result.get('message', 'Unknown error')
-                    logging.error(f"Failed to send message: {error_msg}")
+                    logging.error(f"Failed to send message to WhatsApp: {error_msg}")
                     return {"success": False, "message": f"WhatsApp API error: {error_msg}"}
             else:
                 logging.error(f"WhatsApp API HTTP error: {response.status_code}")
@@ -362,6 +361,67 @@ class TestAPI:
         
         return False
 
+    async def save_and_send_violation_image(self, frame, alert_id: str):
+        """Save violation detection frame and send to WhatsApp using endpoint"""
+        try:
+            # Create output directory
+            os.makedirs("data/images/violations", exist_ok=True)
+            
+            # Check for existing files with same alert number and remove them
+            violations_dir = "data/images/violations"
+            for filename in os.listdir(violations_dir):
+                if filename.startswith(f"violation_{alert_id}_") and filename.endswith((".jpg", ".jpeg", ".png")):
+                    existing_file = os.path.join(violations_dir, filename)
+                    os.remove(existing_file)
+                    logging.info(f"Removed existing image file: {filename}")
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            filename = f"violation_{alert_id}_{timestamp}.jpg"
+            filepath = f"data/images/violations/{filename}"
+            
+            # Save the detection frame
+            success = cv2.imwrite(filepath, frame)
+            if success:
+                logging.info(f"Saved violation image: {filename}")
+                
+                # Send image via endpoint (same as AI engine will do)
+                caption = f"🚨 Violation Detection Image - {alert_id}\n📸 File: {filename}\n📍 Location: Security Camera"
+                
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    with open(filepath, 'rb') as image_file:
+                        files = {
+                            'image': (filename, image_file, 'image/jpeg')
+                        }
+                        data = {
+                            'caption': caption,
+                            'alert_id': alert_id
+                        }
+                        
+                        # Call our own endpoint
+                        response = await client.post(
+                            "http://localhost:8001/send-image-to-whatsapp",
+                            files=files,
+                            data=data
+                        )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("success"):
+                        logging.info(f"Violation image sent successfully via endpoint: {alert_id}")
+                        return True
+                    else:
+                        logging.error(f"Failed to send violation image via endpoint: {result.get('message')}")
+                else:
+                    logging.error(f"Endpoint error for violation image: {response.status_code}")
+            else:
+                logging.error(f"Failed to save violation image: {filepath}")
+                
+        except Exception as e:
+            logging.error(f"Error saving and sending violation image: {e}")
+        
+        return False
+
     async def process_frame(self, frame):
         """
         Process a frame using the fire model, draw detections, and send a notification if needed.
@@ -428,56 +488,22 @@ class TestAPI:
             description = "Violation(s) detected: " + ", ".join(new_detections)
             logging.info(f"New violations detected: {new_detections}, Alert ID: {alert_id}")
             
+            # Save and send violation image if enabled
+            if self.send_images:
+                asyncio.create_task(self.save_and_send_violation_image(frame.copy(), alert_id))
+            
             # Start recording for testing purposes
             if self.send_videos and not self.is_recording:
                 video_path = self.start_recording(frame)
                 if video_path:
                     # Record for 5 seconds then stop and send to WhatsApp
                     asyncio.create_task(self.auto_stop_recording(5.0, video_path, alert_id))
-            
-            # Send instant message if enabled
-            if self.send_text:
-                message = f"🚨 {alert_id} - Fire/Smoke Detection Alert\n\n"
-                message += f"⚠️ {description}\n"
-                message += f"🕐 Time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                message += f"📍 Location: Security Camera\n\n"
-                message += "Please take immediate action!"
-                
-                # Send message instantly
-                asyncio.create_task(self.send_instant_message(message, alert_id))
         
         # Continue recording if active
         if self.is_recording and self.video_writer:
             self.video_writer.write(frame)
             
         return frame, return_dict
-
-    async def send_instant_message(self, message: str, alert_id: str):
-        """Send instant message for violation detection"""
-        try:
-            phone_number = self.whatsapp_config.get("phone_number")
-            if not phone_number:
-                return
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.whatsapp_api_url}/send",
-                    json={
-                        "phone": phone_number,
-                        "message": message
-                    }
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("success"):
-                        logging.info(f"Instant message sent successfully: {alert_id}")
-                    else:
-                        logging.error(f"Failed to send instant message: {result.get('message')}")
-                else:
-                    logging.error(f"Instant message API error: {response.status_code}")
-        except Exception as e:
-            logging.error(f"Error sending instant message: {e}")
 
     async def generate_frames(self):
         """

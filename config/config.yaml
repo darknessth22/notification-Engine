@@ -16,9 +16,9 @@ whatsapp:
     python_server_url: "http://localhost:8000"
     baileys_server_url: "http://localhost:3000"
   phone_number: "+201025939307"
-  send_images: true  # Set to false for text messages only, true for images with captions
-  send_videos: true  # Set to true to send existing video clips from violations folder (not from frame processing)
-  send_text: false   # Send text messages with detection info
+  send_images: false  # Set to false for text messages only, true for images with captions
+  send_videos: false  # Set to true to send existing video clips from violations folder (not from frame processing)
+  send_text: true   # Send text messages with detection info
 
 # Server Configuration
 server:

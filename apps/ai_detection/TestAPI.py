@@ -1,5 +1,4 @@
 # TestAPI.py
-
 import cv2
 import logging
 import asyncio
@@ -66,17 +65,14 @@ class TestAPI:
             allow_headers=["*"],
         )
         logging.basicConfig(level=logging.DEBUG)
-        # Register startup and shutdown events.
         self.app.add_event_handler("startup", self.startup_event)
         self.app.add_event_handler("shutdown", self.shutdown_event)
 
     def _setup_routes(self):
-        # Define the video feed endpoint.
         self.app.get("/video_feed")(self.video_feed)
-        # Add configuration status endpoint
         self.app.get("/config_status")(self.get_config_status)
         
-        # Production endpoints for external systems
+        # endpoints for ai engine to push to
         self.app.post("/send-video-to-whatsapp")(self.send_video_to_whatsapp_endpoint)
         self.app.post("/send-image-to-whatsapp")(self.send_image_to_whatsapp_endpoint)
         self.app.post("/send-message-to-whatsapp")(self.send_message_to_whatsapp_endpoint)

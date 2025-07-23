@@ -4,12 +4,12 @@ services:
   whatsapp-gateway:
     build: .
     ports:
-      - "8000:8000"  # Python FastAPI
-      - "3000:3000"  # Node.js Baileys (optional, mainly for debugging)
+      - "8000:8000"  # Python FastAPI (WhatsApp Gateway)
+      - "3000:3000"  # Node.js Baileys WebSocket server
     volumes:
       - whatsapp_auth:/app/auth_info  # Persistent WhatsApp authentication
-      - ./logs:/var/log               # Container logs
-      - ./data:/app/data              # Data directory for videos, images, violations
+      - ./logs:/app/logs              # Container logs
+      - ./config:/app/config          # Configuration files
     environment:
       - NODE_ENV=production
       - PYTHONUNBUFFERED=1

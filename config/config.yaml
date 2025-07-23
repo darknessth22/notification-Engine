@@ -1,6 +1,6 @@
 model:
   fire_detection:
-    path: "apps/ai_detection/model/smoke-v2-v12n-20250521.pt"
+    path: "models/firesmoke_v4-8m_20241223.pt"
     confidence_threshold: 0.5
 video:
   stream_url: "data/videos/Security Camera Video of Fire at WLNE.mp4"

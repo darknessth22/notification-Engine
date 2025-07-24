@@ -34,11 +34,11 @@ RUN chmod +x entrypoint.sh
 RUN mkdir -p /var/log /var/run /app/auth_info /app/logs
 
 # Expose ports for WhatsApp services only
-EXPOSE 3000 8000
+EXPOSE 3050 3051
 
 # Health check for WhatsApp services
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:3051/health || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["./entrypoint.sh"]

@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+__pycache__
+*.pyc
+
+# Logs
+logs/*.log
+
+# Node modules (will be installed in container)
+node_modules
+
+# Documentation
+docs
+README.md
+DIRECTORY_STRUCTURE.md
+
+# Data files that will be mounted as volumes
+data/images/*
+data/videos/*
+data/violations/*
+
+# Zone identifier files
+*.Zone.Identifier
+
+# Development files
+*.md
+!requirements.txt

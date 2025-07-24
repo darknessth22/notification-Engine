@@ -8,8 +8,8 @@ video:
 
 whatsapp:
   api:
-    python_server_url: "http://localhost:8000"
-    baileys_server_url: "http://localhost:3000"
+    python_server_url: "http://localhost:3051"
+    baileys_server_url: "http://localhost:3050"
   phone_number: "+201025939307"
   send_images: false
   send_videos: false  

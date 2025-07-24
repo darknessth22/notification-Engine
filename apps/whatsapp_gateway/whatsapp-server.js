@@ -13,7 +13,7 @@ const multer = require('multer');
 global.crypto = crypto;
 
 const app = express();
-const PORT = 3000;
+const PORT = 3050;
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({

@@ -1,1155 +1,657 @@
-# WhatsApp API Gateway - Complete Dockerized Solution
+# Notification Engine - WhatsApp Integration System
 
-A fully Dockerized system that enables WhatsApp messaging through Python using the Baileys library (Node.js) under the hood. This solution provides a clean REST API for sending WhatsApp messages, images, and media programmatically.
+A comprehensive, production-ready notification system that combines AI-powered fire/smoke detection with automated WhatsApp messaging capabilities. This system provides a complete dockerized solution for real-time alerts and notifications.
 
-## 🎯 What This Solution Provides
-
-This is a comprehensive WhatsApp automation gateway that combines:
-1. **Node.js server using Baileys** for WhatsApp Web automation
-2. **Python FastAPI wrapper** that provides a clean REST API
-3. **Single Docker container** running both services with supervisord
-4. **Persistent authentication** with volume mounting for QR code sessions
-5. **Auto-reconnection** capabilities for stable WhatsApp connection
-6. **Image and media sending** support with file uploads and URL-based sending
-7. **Complete testing utilities** and examples for easy integration
-
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Docker Container                         │
-│                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────────────┐ │
-│  │   Python FastAPI    │    │      Node.js Server         │ │
-│  │   (Port: 8000)      │◄──┤      (Baileys Library)      │ │
-│  │                     │    │      (Port: 3000)           │ │
-│  │ • REST API          │    │ • WhatsApp Web Connection   │ │
-│  │ • Request Forwarding│    │ • QR Code Authentication    │ │
-│  │ • Error Handling    │    │ • Message Sending           │ │
-│  │ • Health Monitoring │    │ • Media File Handling       │ │
-│  │ • Image Processing  │    │ • Auto-reconnection         │ │
-│  └─────────────────────┘    └─────────────────────────────┘ │
-│                                                             │
-│              Managed by supervisord                         │
-│              Persistent auth: /app/auth_info                │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                             Notification Engine                                 │
+│                                                                                 │
+│  ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐ │
+│  │   AI Detection      │    │   WhatsApp Gateway  │    │    Configuration    │ │
+│  │   (Port: 8001)      │    │                     │    │      Manager        │ │
+│  │                     │    │ ┌─────────────────┐ │    │                     │ │
+│  │ • Fire/Smoke Model  │────┤ │ Python FastAPI  │ │    │ • YAML Config      │ │
+│  │ • Video Processing  │    │ │ (Port: 3051)    │ │    │ • Environment Vars │ │
+│  │ • Alert Generation  │    │ └─────────────────┘ │    │ • Logging Setup    │ │
+│  │ • TestAPI Endpoints │    │         │           │    │                     │ │
+│  │                     │    │ ┌─────────────────┐ │    │                     │ │
+│  │                     │    │ │ Node.js Baileys │ │    │                     │ │
+│  │                     │    │ │ (Port: 3050)    │ │    │                     │ │
+│  │                     │    │ └─────────────────┘ │    │                     │ │
+│  └─────────────────────┘    └─────────────────────┘    └─────────────────────┘ │
+│                                                                                 │
+│                           ┌─────────────────────────────┐                      │
+│                           │      Docker Container       │                      │
+│                           │                             │                      │
+│                           │ • Supervisord Management    │                      │
+│                           │ • Persistent Authentication │                      │
+│                           │ • Volume Mounting           │                      │
+│                           │ • Health Monitoring         │                      │
+│                           └─────────────────────────────┘                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 📁 Complete File Structure & Purpose
+## 🚀 Key Features
 
-### 🚀 Core Application Files
+### AI Detection Engine
+- **Fire/Smoke Detection**: Advanced YOLO-based model for real-time fire and smoke detection
+- **Video Stream Processing**: Support for live video streams and recorded files
+- **Configurable Thresholds**: Adjustable confidence levels for detection accuracy
+- **Alert Management**: Intelligent alert generation with deduplication and timing controls
 
-#### `whatsapp-server.js` - Baileys WhatsApp Server
-**The heart of WhatsApp communication**
-- Connects to WhatsApp Web using the latest Baileys v6.6.0 library
-- Handles QR code generation and authentication flow
-- Manages WhatsApp session state and auto-reconnection
-- Processes text messages, images, videos, audio, and documents
-- Provides REST API endpoints for message sending
-- Validates and formats phone numbers automatically
-- Includes comprehensive error handling and logging
+### WhatsApp Integration
+- **Baileys Library**: Latest WhatsApp Web automation using @whiskeysockets/baileys v6.6.0
+- **Multi-Format Support**: Send text messages, images, videos, and documents
+- **Persistent Sessions**: QR code authentication with session persistence
+- **Auto-Reconnection**: Robust connection management with automatic reconnection
+- **Rate Limiting**: Built-in protection against spam and rate limits
 
-**API Endpoints:**
-- `GET /health` - Server health and connection status
-- `GET /status` - Detailed WhatsApp connection information  
-- `POST /send-message` - Send text messages
-- `POST /send-image` - Send images with file upload
-- `POST /send-image-url` - Send images from URLs
+### Containerized Architecture
+- **Docker Compose**: Single-command deployment with docker-compose
+- **Supervisord Management**: Multi-process container running both Node.js and Python services
+- **Volume Persistence**: Persistent WhatsApp authentication and log storage
+- **Health Monitoring**: Built-in health checks and monitoring capabilities
 
-#### `python_api.py` - FastAPI Gateway
-**Clean Python interface to the Baileys server**
-- FastAPI-based REST API with automatic documentation
-- Forwards requests to Node.js Baileys server internally
-- Comprehensive error handling with detailed responses
-- Health monitoring of both Python and Node.js services
-- Pydantic models for request/response validation
-- Async HTTP client for efficient communication
-- Support for text messages, file uploads, and URL-based media
+## 📁 Project Structure
 
-**API Endpoints:**
-- `GET /` - API information and documentation
-- `GET /health` - Complete system health check
-- `GET /status` - Detailed status of both services
-- `POST /send` - Send WhatsApp text messages
-- `POST /send-image` - Upload and send image files
-- `POST /send-image-url` - Send images from URLs
-- `POST /test-connection` - Test connectivity to Baileys server
+```
+notification-Engine/
+├── 📦 Core Application
+│   ├── apps/
+│   │   ├── ai_detection/
+│   │   │   ├── TestAPI.py              # AI detection API server
+│   │   │   └── model/                  # AI model files
+│   │   └── whatsapp_gateway/
+│   │       ├── whatsapp-server.js      # Node.js Baileys server
+│   │       ├── python_api.py           # Python FastAPI bridge
+│   │       └── package.json            # Node.js dependencies
+│   │
+├── 🐳 Docker Configuration
+│   ├── Dockerfile                      # Multi-service container definition
+│   ├── docker-compose.yml              # Container orchestration
+│   ├── supervisord.conf                # Process management
+│   ├── entrypoint.sh                   # Container initialization
+│   └── requirements.txt                # Python dependencies
+│   
+├── ⚙️ Configuration
+│   ├── config/
+│   │   └── config.yaml                 # Main configuration file
+│   └── logs/                           # Application logs
+│   
+├── 📚 Documentation
+│   ├── README.md                       # This file
+│   └── WHATSAPP_DEPLOYMENT.md          # Deployment guide
+│   
+└── 📁 Data & Models
+    ├── data/                           # Video files and outputs
+    └── models/                         # AI detection models
+```
 
-### 🐳 Docker & Container Files
+## 🔧 Component Details
 
-#### `Dockerfile` - Multi-Service Container Build
-**Creates a single container running both services**
-- Uses Node.js 20 as base image for better crypto support
-- Installs Python 3, pip, and system dependencies
-- Installs supervisord for multi-process management
-- Sets up proper working directories and permissions
-- Installs all Node.js and Python dependencies
-- Exposes ports 3000 (Node.js) and 8000 (Python)
-- Includes health checks for container monitoring
+### 1. WhatsApp Gateway Services
 
-#### `docker-compose.yml` - Container Orchestration
-**Simplifies deployment and volume management**
-- Builds and runs the WhatsApp gateway container
-- Creates persistent volume for WhatsApp authentication data
-- Maps container ports to host (8000 for API access)
-- Sets up environment variables for production
-- Configures restart policies and health checks
-- Mounts logs directory for easy log access
-- Handles graceful container shutdown
+#### Node.js Baileys Server (`whatsapp-server.js`)
+**Purpose**: Core WhatsApp Web automation server
+**Port**: 3050
+**Technology**: Node.js with Express.js
 
-#### `supervisord.conf` - Process Management
-**Manages both Node.js and Python processes in one container**
-- Runs Node.js Baileys server and Python FastAPI simultaneously
-- Automatic restart of services if they crash
-- Separate log files for each service
-- Process monitoring and status reporting
-- Graceful shutdown handling
-- Configurable restart policies and retry limits
+**Key Features**:
+- WhatsApp Web connection using Baileys library
+- QR code generation and authentication
+- Message sending (text, images, videos, documents)
+- Connection state management and auto-reconnection
+- RESTful API endpoints for communication
 
-#### `entrypoint.sh` - Container Initialization
-**Sets up the container environment on startup**
-- Creates necessary directories for logs and authentication
-- Sets proper file permissions for WhatsApp auth storage
-- Initializes logging infrastructure
-- Starts supervisord to manage both services
-- Provides startup status information
+**Dependencies** (`package.json`):
+```json
+{
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.6.0",  // WhatsApp Web API
+    "express": "^4.18.2",                // Web server framework
+    "qrcode-terminal": "^0.12.0",        // QR code display
+    "pino": "^8.16.1",                   // High-performance logging
+    "cors": "^2.8.5",                    // Cross-origin requests
+    "multer": "^1.4.5-lts.1"             // File upload handling
+  }
+}
+```
 
-### 📦 Dependencies & Configuration
+**API Endpoints**:
+```javascript
+GET  /health              // Server health check
+GET  /status              // WhatsApp connection status
+POST /send-message        // Send text messages
+POST /send-image          // Send images with file upload
+POST /send-video          // Send videos with file upload
+POST /send-document       // Send documents
+```
 
-#### `package.json` - Node.js Dependencies
-**Defines all Node.js packages and scripts**
-- **@whiskeysockets/baileys**: Latest WhatsApp Web library (v6.6.0)
-- **express**: Web server framework for REST API
-- **cors**: Cross-origin request handling
-- **multer**: File upload handling for images/media
-- **qrcode-terminal**: QR code display in terminal
-- **pino**: High-performance logging
+#### Python FastAPI Bridge (`python_api.py`)
+**Purpose**: Clean Python interface to Baileys server
+**Port**: 3051
+**Technology**: FastAPI with async support
 
-#### `requirements.txt` - Python Dependencies
-**Defines all Python packages for the FastAPI server**
-- **fastapi**: Modern web framework for Python APIs
-- **uvicorn**: ASGI server for running FastAPI
-- **httpx**: Async HTTP client for internal communication
-- **pydantic**: Data validation and serialization
-- **python-multipart**: File upload support
-- **aiofiles**: Async file operations
+**Key Features**:
+- RESTful API with automatic OpenAPI documentation
+- Async HTTP client for communication with Baileys server
+- Request validation using Pydantic models
+- Comprehensive error handling and logging
+- Health monitoring of both services
 
-### 🧪 Testing & Utility Files
+**Dependencies** (`requirements.txt`):
+```python
+fastapi==0.104.1          # Modern web framework
+uvicorn[standard]==0.24.0 # ASGI server
+httpx==0.25.2             # Async HTTP client
+pydantic==2.5.0           # Data validation
+python-multipart==0.0.6   # File upload support
+aiofiles==23.2.1          # Async file operations
+PyYAML==6.0.1             # Configuration parsing
+```
 
-#### `test_client.py` - Comprehensive Testing Suite
-**Complete testing utility for all API functionality**
-- Health check testing for both services
-- WhatsApp connection status monitoring
-- Single message sending with validation
-- Bulk messaging capabilities for multiple messages
-- Interactive messaging mode for real-time testing
-- Auto messaging with configurable intervals
-- Error handling and retry mechanisms
+**API Endpoints**:
+```python
+GET  /                    # API information
+GET  /health              # System health check
+GET  /status              # Detailed service status
+POST /send                # Send WhatsApp messages
+POST /send-image          # Send images via URL or upload
+POST /test-connection     # Test Baileys connectivity
+```
 
-#### `send_test_message.py` - Simple Message Sender
-**Quick utility for sending test messages**
-- Command-line interface for sending messages
-- Phone number validation and formatting
-- Connection status checking before sending
-- Detailed success/error reporting
-- Support for command-line arguments or interactive input
+### 2. AI Detection Engine
 
-#### `image_sender.py` - Media Testing Utility
-**Specialized tool for testing image and media sending**
-- Send images from local files
-- Send images from URLs
-- Create sample test images programmatically
-- Support for captions and metadata
-- File type validation and error handling
-- Batch image sending capabilities
+#### TestAPI Server (`TestAPI.py`)
+**Purpose**: AI-powered fire and smoke detection with WhatsApp integration
+**Port**: 8001
+**Technology**: FastAPI with computer vision models
 
-### 🔧 Setup & Deployment Files
+**Key Features**:
+- YOLO-based fire and smoke detection
+- Real-time video stream processing
+- Configurable detection thresholds
+- Automatic alert generation and deduplication
+- Integration with WhatsApp gateway for notifications
 
-#### `setup.sh` - Automated Setup Script
-**One-command deployment script**
-- Checks Docker installation and status
-- Builds the Docker container automatically
-- Starts all services with docker-compose
-- Displays service status and health information
-- Provides next steps and useful commands
-- Shows all available API endpoints
+**Main Endpoints**:
+```python
+GET  /video_feed                    # Live video stream
+GET  /config_status                 # Configuration status
+POST /send-video-to-whatsapp        # Send video alerts
+POST /send-image-to-whatsapp        # Send image alerts  
+POST /send-message-to-whatsapp      # Send text alerts
+```
 
-### 📁 Additional Directories
+### 3. Docker Infrastructure
 
-#### `logs/` - Service Logs
-- `baileys-server.log` - Node.js Baileys server logs
-- `python-api.log` - Python FastAPI server logs
-- `supervisord.log` - Process management logs
+#### Dockerfile - Multi-Service Container
+**Base Image**: node:20-bullseye
+**Purpose**: Single container running both Node.js and Python services
 
-#### `config/` - Configuration Files
-- Contains YAML configuration files for various settings
+**Build Process**:
+```dockerfile
+# System dependencies installation
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip supervisor curl
 
-#### `src/` - Source Code Modules
-- Additional Python modules and utilities
-- Configuration management
-- WhatsApp notification handlers
+# Node.js dependencies
+COPY apps/whatsapp_gateway/package*.json ./
+RUN npm install --production
 
-#### `models/` - AI Models
-- Contains machine learning models for fire/smoke detection
-- Used for automated alert systems
+# Python dependencies  
+COPY requirements.txt ./
+RUN pip3 install -r requirements.txt
 
-#### `video/` & `downloaded_images/` - Media Storage
-- Sample videos and images for testing
-- Downloaded media files from WhatsApp
-- Temporary storage for processed files
+# Application files
+COPY apps/whatsapp_gateway/ ./
+COPY config/ ./config/
+COPY supervisord.conf entrypoint.sh ./
+
+# Expose ports: 3050 (Node.js), 3051 (Python)
+EXPOSE 3050 3051
+```
+
+#### Docker Compose - Orchestration
+**File**: `docker-compose.yml`
+**Purpose**: Complete system deployment and management
+
+**Configuration**:
+```yaml
+services:
+  whatsapp-gateway:
+    build: .
+    ports:
+      - "3051:3051"  # Python FastAPI
+      - "3050:3050"  # Node.js Baileys
+    volumes:
+      - whatsapp_auth:/app/auth_info    # Persistent WhatsApp auth
+      - ./logs:/app/logs                # Log access
+      - ./config:/app/config            # Configuration
+    environment:
+      - NODE_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3051/health"]
+```
+
+#### Supervisord - Process Management
+**File**: `supervisord.conf`
+**Purpose**: Manage multiple processes within single container
+
+**Configuration**:
+```ini
+[program:baileys-server]
+command=node whatsapp-server.js
+directory=/app
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile=/var/log/baileys-server.log
+
+[program:python-api]
+command=python3 python_api.py
+directory=/app
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile=/var/log/python-api.log
+```
+
+### 4. Configuration Management
+
+#### Main Configuration (`config/config.yaml`)
+**Purpose**: Centralized configuration for all services
+
+**Structure**:
+```yaml
+# AI Model Configuration
+model:
+  fire_detection:
+    path: "models/firesmoke_v4-8m_20241223.pt"
+    confidence_threshold: 0.5
+
+# WhatsApp Service URLs
+whatsapp:
+  api:
+    python_server_url: "http://localhost:3051"
+    baileys_server_url: "http://localhost:3050"
+  phone_number: "+1234567890"
+  send_images: true
+  send_videos: true
+  send_text: true
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8001
+  reload: false
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  file_path: "logs/fire_detection.log"
+
+# Notification Settings
+notification:
+  initial_alert_counter: 1
+  default_priority: "High"
+```
 
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
 - Docker and Docker Compose installed
-- Port 8000 available on your system
+- Ports 3050, 3051, and 8001 available
 - WhatsApp mobile app for QR code scanning
 
 ### 1. Clone and Setup
 ```bash
-git clone <your-repo>
+# Clone the repository
+git clone https://github.com/darknessth22/notification-Engine.git
 cd "notification Engine"
-chmod +x setup.sh
-./setup.sh
+
+# Make scripts executable
+chmod +x entrypoint.sh
 ```
 
-### 2. Watch for QR Code
+### 2. Deploy with Docker Compose
 ```bash
-# Monitor container logs to see QR code
-sudo docker compose logs -f whatsapp-gateway
+# Build and start all services
+docker-compose up -d --build
 
-# The QR code will appear in the logs - scan it with WhatsApp mobile app
+# Monitor logs for QR code
+docker-compose logs -f whatsapp-gateway
 ```
 
-### 3. Verify Connection
+### 3. WhatsApp Authentication
+1. **Watch for QR Code**: Monitor the logs until QR code appears
+2. **Scan QR Code**: Open WhatsApp → Settings → Linked Devices → Link a Device
+3. **Confirm Connection**: Wait for "Connected to WhatsApp" message in logs
+
+### 4. Verify Services
 ```bash
-# Check if WhatsApp is connected
-curl http://localhost:8000/health
+# Check all service health
+curl http://localhost:3051/health
 
-# Check detailed status
-curl http://localhost:8000/status
-```
+# Check AI detection API
+curl http://localhost:8001/config_status
 
-### 4. Send Your First Message
-```bash
-# Using the test script
-python3 send_test_message.py "+1234567890" "Hello from WhatsApp API!"
-
-# Using curl
-curl -X POST "http://localhost:8000/send" \
+# Test WhatsApp messaging
+curl -X POST "http://localhost:3051/send" \
      -H "Content-Type: application/json" \
-     -d '{"phone": "+1234567890", "message": "Hello World!"}'
+     -d '{"phone": "+1234567890", "message": "Hello from Notification Engine!"}'
 ```
 
 ## 📱 API Usage Examples
 
-### Send Text Message
-```bash
-curl -X POST "http://localhost:8000/send" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "phone": "+1234567890",
-       "message": "Hello from WhatsApp API Gateway!"
-     }'
+### Send WhatsApp Messages
+```python
+import requests
+
+# Send text message
+response = requests.post("http://localhost:3051/send", json={
+    "phone": "+1234567890",
+    "message": "Alert: Fire detected in building A!"
+})
+
+# Send image with caption
+with open("alert_image.jpg", "rb") as f:
+    files = {"image": f}
+    data = {
+        "phone": "+1234567890",
+        "caption": "🚨 Fire Detection Alert - Building A"
+    }
+    response = requests.post("http://localhost:3051/send-image", 
+                           files=files, data=data)
 ```
 
-### Send Image File
-```bash
-curl -X POST "http://localhost:8000/send-image" \
-     -F "phone=+1234567890" \
-     -F "image=@/path/to/image.jpg" \
-     -F "caption=Check out this image!"
+### AI Detection Integration
+```python
+import requests
+
+# Send fire detection alert
+alert_data = {
+    "video": open("fire_detected.mp4", "rb"),
+    "caption": "🔥 FIRE DETECTED - Immediate attention required!",
+    "alert_id": "FIRE_001_2025"
+}
+
+response = requests.post("http://localhost:8001/send-video-to-whatsapp", 
+                        files={"video": alert_data["video"]},
+                        data={"caption": alert_data["caption"], 
+                              "alert_id": alert_data["alert_id"]})
 ```
 
-### Send Image from URL
+## 🔧 Configuration Options
+
+### Environment Variables
 ```bash
-curl -X POST "http://localhost:8000/send-image-url" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "phone": "+1234567890",
-       "imageUrl": "https://example.com/image.jpg",
-       "caption": "Image from URL"
-     }'
+# Docker environment variables
+NODE_ENV=production              # Node.js environment
+PYTHONUNBUFFERED=1              # Python output buffering
+LOG_LEVEL=INFO                  # Application log level
 ```
 
-### Check Health Status
-```bash
-curl http://localhost:8000/health
+### Port Configuration
+- **3050**: Node.js Baileys WhatsApp server
+- **3051**: Python FastAPI gateway  
+- **8001**: AI detection API server
+
+### WhatsApp Settings
+```yaml
+whatsapp:
+  phone_number: "+1234567890"    # Destination phone number
+  send_images: true              # Enable image alerts
+  send_videos: true              # Enable video alerts
+  send_text: true                # Enable text alerts
 ```
 
-## 🧪 Testing Tools
+## 📊 Monitoring and Logging
 
-### Interactive Test Client
+### Service Health Checks
 ```bash
-python3 test_client.py
-```
-Features:
-- Health and status checking
-- Single message sending
-- Bulk messaging (multiple messages)
-- Interactive messaging mode
-- Auto messaging with intervals
+# Container health
+docker-compose ps
 
-### Simple Message Sender
-```bash
-python3 send_test_message.py "+1234567890" "Test message"
+# Individual service health
+curl http://localhost:3051/health
+curl http://localhost:8001/config_status
+
+# Detailed system status
+curl http://localhost:3051/status
 ```
 
-### Image Sender Utility
+### Log Management
 ```bash
-python3 image_sender.py
-```
-Features:
-- Send local image files
-- Send images from URLs
-- Create and send sample images
-- Add captions to images
+# View all logs
+docker-compose logs -f
 
-## 🔧 Management Commands
+# WhatsApp service logs
+docker-compose logs -f whatsapp-gateway
 
-### View Logs
-```bash
-# All services
-sudo docker compose logs -f
+# AI detection logs
+tail -f logs/fire_detection.log
 
-# Python API only
-sudo docker compose logs -f whatsapp-gateway | grep python-api
-
-# Baileys server only  
-sudo docker compose logs -f whatsapp-gateway | grep baileys-server
+# Individual service logs inside container
+docker-compose exec whatsapp-gateway cat /var/log/baileys-server.log
+docker-compose exec whatsapp-gateway cat /var/log/python-api.log
 ```
 
-### Restart Services
+### Performance Monitoring
 ```bash
-# Restart everything
-sudo docker compose restart
+# Container resource usage
+docker stats
 
-# Rebuild and restart
-sudo docker compose down
-sudo docker compose up --build -d
+# Service response times
+time curl http://localhost:3051/health
+time curl http://localhost:8001/config_status
 ```
 
-### Stop Services
+## 🛡️ Security and Production Considerations
+
+### Security Best Practices
+- **Network Isolation**: Use Docker networks for service communication
+- **Environment Variables**: Store sensitive configuration in environment variables
+- **Authentication**: Secure WhatsApp session data in persistent volumes
+- **Rate Limiting**: Implement rate limiting for API endpoints
+- **HTTPS**: Use reverse proxy (nginx) for HTTPS in production
+
+### Production Deployment
 ```bash
-sudo docker compose down
+# Production docker-compose override
+cat > docker-compose.prod.yml << EOF
+version: '3.8'
+services:
+  whatsapp-gateway:
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=WARN
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+EOF
+
+# Deploy to production
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-## 📊 API Endpoints Reference
+### Backup and Recovery
+```bash
+# Backup WhatsApp authentication
+docker run --rm -v notification-engine_whatsapp_auth:/data -v $(pwd):/backup ubuntu tar czf /backup/whatsapp_auth_backup.tar.gz -C /data .
 
-| Method | Endpoint | Description | Parameters |
-|--------|----------|-------------|------------|
-| GET | `/` | API information and documentation | None |
-| GET | `/health` | System health check | None |
-| GET | `/status` | Detailed system status | None |
-| POST | `/send` | Send text message | `phone`, `message` |
-| POST | `/send-image` | Send image file | `phone`, `image` (file), `caption` (optional) |
-| POST | `/send-image-url` | Send image from URL | `phone`, `imageUrl`, `caption` (optional) |
-| POST | `/test-connection` | Test Baileys connectivity | None |
+# Restore WhatsApp authentication
+docker run --rm -v notification-engine_whatsapp_auth:/data -v $(pwd):/backup ubuntu tar xzf /backup/whatsapp_auth_backup.tar.gz -C /data
+```
 
-## 🔍 Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### 1. WhatsApp Not Connected
-**Symptoms**: API returns "WhatsApp not connected" errors
-**Solution**: 
-- Check logs: `sudo docker compose logs -f whatsapp-gateway`
-- Look for QR code in logs and scan with WhatsApp mobile app
-- Wait for "Connected to WhatsApp" message
-
-#### 2. Port Already in Use
-**Symptoms**: Container fails to start with port binding errors
-**Solution**:
-- Check what's using port 8000: `sudo lsof -i :8000`
-- Stop conflicting service or change port in docker-compose.yml
-
-#### 3. Authentication Session Expired
-**Symptoms**: Sudden disconnection after working fine
-**Solution**:
-- WhatsApp sessions expire periodically
-- Check logs for disconnection reason
-- Re-scan QR code when prompted
-
-#### 4. Image Upload Fails
-**Symptoms**: Image sending returns errors
-**Solution**:
-- Check file size (max 16MB)
-- Verify file type (jpg, png, gif, webp supported)
-- Ensure proper file permissions
-
-### Log Analysis
+#### 1. WhatsApp Connection Problems
 ```bash
-# Check for connection issues
-sudo docker compose logs whatsapp-gateway | grep -i "connect\|disconnect\|error"
+# Check QR code generation
+docker-compose logs whatsapp-gateway | grep -i "qr\|code"
 
-# Monitor real-time logs
-sudo docker compose logs -f whatsapp-gateway
-
-# Check specific service logs
-sudo docker compose exec whatsapp-gateway cat /var/log/baileys-server.log
-sudo docker compose exec whatsapp-gateway cat /var/log/python-api.log
+# Reset WhatsApp session
+docker volume rm notification-engine_whatsapp_auth
+docker-compose restart
 ```
 
-## 🔒 Security Considerations
-
-- **Authentication**: WhatsApp sessions are stored in persistent Docker volumes
-- **Phone Numbers**: Always include country codes (+1, +44, etc.)
-- **Rate Limiting**: WhatsApp has built-in rate limits - avoid spam
-- **Network Security**: Consider using nginx proxy for production
-- **Data Privacy**: Messages are sent directly through WhatsApp servers
-
-## 🚀 Production Deployment
-
-### Environment Variables
-```yaml
-# docker-compose.yml additions for production
-environment:
-  - NODE_ENV=production
-  - PYTHONUNBUFFERED=1
-  - API_PORT=8000
-  - BAILEYS_PORT=3000
-```
-
-### Nginx Reverse Proxy
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### Auto-Restart on Boot
+#### 2. Port Conflicts
 ```bash
-# Add to systemd or use Docker restart policies
-sudo docker compose up -d --restart unless-stopped
+# Check port usage
+sudo lsof -i :3050
+sudo lsof -i :3051
+sudo lsof -i :8001
+
+# Change ports in docker-compose.yml if needed
 ```
 
-## 📚 Integration Examples
+#### 3. Container Startup Issues
+```bash
+# Check container status
+docker-compose ps
 
-### Python Integration
+# View startup logs
+docker-compose logs whatsapp-gateway
+
+# Rebuild container
+docker-compose down
+docker-compose up --build -d
+```
+
+#### 4. AI Model Loading Problems
+```bash
+# Check model file existence
+ls -la apps/ai_detection/model/
+
+# Check AI detection logs
+tail -f logs/fire_detection.log
+
+# Test AI API directly
+curl http://localhost:8001/config_status
+```
+
+### Debug Mode
+```bash
+# Run in debug mode with console output
+docker-compose down
+docker-compose up --build
+
+# Enable debug logging
+export LOG_LEVEL=DEBUG
+docker-compose up --build
+```
+
+## 🚀 Development and Extension
+
+### Adding New Features
+
+#### New Detection Models
 ```python
-import requests
-
-def send_whatsapp_message(phone, message):
-    response = requests.post(
-        "http://localhost:8000/send",
-        json={"phone": phone, "message": message}
-    )
-    return response.json()
-
-# Usage
-result = send_whatsapp_message("+1234567890", "Hello from Python!")
+# Add new model in config/config.yaml
+model:
+  smoke_detection:
+    path: "models/smoke_v2.pt"
+    confidence_threshold: 0.6
 ```
 
-### Node.js Integration
+#### Custom Alert Types
+```python
+# Extend TestAPI.py with new alert endpoints
+@app.post("/send-custom-alert")
+async def send_custom_alert(request: Request):
+    # Custom alert logic
+    pass
+```
+
+#### Additional WhatsApp Features
 ```javascript
-const axios = require('axios');
-
-async function sendWhatsAppMessage(phone, message) {
-    const response = await axios.post('http://localhost:8000/send', {
-        phone: phone,
-        message: message
-    });
-    return response.data;
-}
-
-// Usage
-sendWhatsAppMessage('+1234567890', 'Hello from Node.js!');
+// Add new endpoints in whatsapp-server.js
+app.post('/send-document', async (req, res) => {
+    // Document sending logic
+});
 ```
 
-### Webhook Integration
-```python
-# Flask webhook example
-from flask import Flask, request
-import requests
+### API Documentation
+- **FastAPI Docs**: http://localhost:3051/docs (automatic OpenAPI documentation)
+- **Health Endpoints**: Real-time service status monitoring
+- **Configuration API**: Dynamic configuration management
 
-app = Flask(__name__)
+## 📈 Performance Optimization
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.json
-    # Send WhatsApp notification
-    requests.post('http://localhost:8000/send', json={
-        'phone': data['phone'],
-        'message': f"Alert: {data['message']}"
-    })
-    return 'OK'
+### Resource Allocation
+```yaml
+# Docker Compose resource limits
+deploy:
+  resources:
+    limits:
+      cpus: '2.0'
+      memory: 2G
+    reservations:
+      cpus: '1.0'
+      memory: 1G
 ```
 
-## 📈 Monitoring & Analytics
-
-### Health Monitoring
-```bash
-# Set up monitoring with curl checks
-#!/bin/bash
-while true; do
-    curl -s http://localhost:8000/health | jq '.baileys_connected'
-    sleep 30
-done
-```
-
-### Message Analytics
-- Monitor logs for message success/failure rates
-- Track connection uptime
-- Monitor resource usage with `docker stats`
+### Caching and Optimization
+- **Model Caching**: AI models loaded once and cached in memory
+- **Connection Pooling**: HTTP connection reuse for API calls
+- **Async Processing**: Non-blocking operations for better throughput
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Test thoroughly with the provided test scripts
-4. Submit a pull request with detailed description
+### Development Setup
+```bash
+# Clone repository
+git clone https://github.com/darknessth22/notification-Engine.git
 
-## 📝 License
+# Install development dependencies
+cd "notification Engine/apps/whatsapp_gateway"
+npm install
 
-MIT License - feel free to use in personal and commercial projects.
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run services locally for development
+npm run dev                    # Node.js service
+python python_api.py          # Python service
+python apps/ai_detection/TestAPI.py  # AI detection service
+```
+
+### Code Standards
+- **JavaScript**: ESLint with Airbnb configuration
+- **Python**: Black formatter with PEP 8 standards
+- **Docker**: Multi-stage builds and security best practices
+- **Documentation**: Comprehensive inline documentation
+
+## 📄 License
+
+MIT License - See LICENSE file for details.
 
 ## 🆘 Support
 
 For issues and support:
 1. Check the troubleshooting section above
-2. Review container logs for error details
-3. Verify WhatsApp connection status
-4. Check that all dependencies are properly installed
+2. Review container logs for error details  
+3. Verify all services are running and healthy
+4. Ensure WhatsApp connection is established
+5. Create an issue on GitHub with detailed error information
 
 ---
 
-**Built with ❤️ using Baileys, FastAPI, and Docker**
-**Purpose**: Get everything running with a single command
-**What it does**:
-- Checks if Docker is running
-- Builds the container
-- Starts services in background
-- Shows service status
-- Provides next steps and useful commands
+**Built with ❤️ for real-time notification and alert systems**
 
-### Additional Files
+**Technologies**: FastAPI • Node.js • Baileys • Docker • YOLO • Computer Vision
 
-#### 11. `.gitignore` - Version Control
-```gitignore
-# Excludes sensitive and temporary files from git
-```
-**Important exclusions**:
-- `auth_info/` - WhatsApp authentication data
-- `node_modules/` - Node.js dependencies
-- `__pycache__/` - Python cache files
-- `logs/` - Application logs
-
-## 🚀 Quick Start Guide
-
-### Step 1: Run the Setup
-```bash
-# Make the script executable and run it
-chmod +x setup.sh
-./setup.sh
-```
-
-### Step 2: Authenticate WhatsApp
-```bash
-# Watch for the QR code in logs
-docker-compose logs -f whatsapp-gateway
-```
-1. Look for the QR code in the terminal output
-2. Open WhatsApp on your phone
-3. Go to Settings → Linked Devices → Link a Device
-4. Scan the QR code displayed in the terminal
-
-### Step 3: Test the API
-```bash
-# Run the test client
-python test_client.py
-```
-
-## 📡 API Usage Examples
-
-### Basic Message Sending
-```python
-import requests
-
-# Send a simple message
-response = requests.post("http://localhost:8000/send", json={
-    "phone": "+1234567890",
-    "message": "Hello from WhatsApp API Gateway!"
-})
-
-print(response.json())
-# Output: {"success": true, "message": "Message sent successfully", ...}
-```
-
-### Advanced Usage with Error Handling
-```python
-import requests
-import time
-
-class WhatsAppAPI:
-    def __init__(self, base_url="http://localhost:8000"):
-        self.base_url = base_url
-    
-    def check_connection(self):
-        """Check if WhatsApp is connected"""
-        try:
-            response = requests.get(f"{self.base_url}/status")
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("baileys_server", {}).get("whatsapp_connected", False)
-        except:
-            return False
-        return False
-    
-    def send_message(self, phone, message):
-        """Send a WhatsApp message"""
-        if not self.check_connection():
-            return {"success": False, "error": "WhatsApp not connected"}
-        
-        try:
-            response = requests.post(f"{self.base_url}/send", json={
-                "phone": phone,
-                "message": message
-            })
-            return response.json()
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-# Usage
-api = WhatsAppAPI()
-result = api.send_message("+1234567890", "Hello World!")
-print(result)
-```
-
-### Bulk Message Sending
-```python
-import requests
-import time
-
-def send_bulk_messages(contacts, message, delay=2):
-    """Send messages to multiple contacts"""
-    results = []
-    
-    for contact in contacts:
-        try:
-            response = requests.post("http://localhost:8000/send", json={
-                "phone": contact,
-                "message": message
-            })
-            results.append({
-                "contact": contact,
-                "success": response.status_code == 200,
-                "response": response.json()
-            })
-            print(f"✅ Sent to {contact}")
-            time.sleep(delay)  # Rate limiting
-        except Exception as e:
-            results.append({
-                "contact": contact,
-                "success": False,
-                "error": str(e)
-            })
-            print(f"❌ Failed to send to {contact}: {e}")
-    
-    return results
-
-# Example usage
-contacts = ["+1234567890", "+0987654321", "+1122334455"]
-message = "🤖 Automated message from our system!"
-results = send_bulk_messages(contacts, message)
-```
-
-## 🔧 Configuration & Customization
-
-### Environment Variables
-You can customize behavior through environment variables in `docker-compose.yml`:
-
-```yaml
-environment:
-  - NODE_ENV=production          # Node.js environment
-  - PYTHONUNBUFFERED=1          # Python output buffering
-  - LOG_LEVEL=info              # Logging level
-```
-
-### Port Configuration
-Default ports:
-- **8000**: Python FastAPI (main API - expose this externally)
-- **3000**: Node.js Baileys server (internal communication)
-
-To change ports, modify `docker-compose.yml`:
-```yaml
-ports:
-  - "8080:8000"  # Change external port to 8080
-  - "3001:3000"  # Change Node.js port to 3001
-```
-
-### Persistent Data
-WhatsApp authentication is stored in a Docker volume:
-```yaml
-volumes:
-  - whatsapp_auth:/app/auth_info  # Persistent authentication
-  - ./logs:/var/log               # Access logs from host
-```
-
-## 📊 Monitoring & Troubleshooting
-
-### Health Checks
-```bash
-# Check container health
-docker-compose ps
-
-# API health check
-curl http://localhost:8000/health
-
-# Detailed status
-curl http://localhost:8000/status
-```
-
-### Log Monitoring
-```bash
-# All services
-docker-compose logs -f
-
-# Python API only
-docker-compose logs -f whatsapp-gateway | grep python-api
-
-# Baileys server only
-docker-compose logs -f whatsapp-gateway | grep baileys-server
-
-# Inside container
-docker-compose exec whatsapp-gateway tail -f /var/log/python-api.log
-docker-compose exec whatsapp-gateway tail -f /var/log/baileys-server.log
-```
-
-### Common Issues & Solutions
-
-#### 1. QR Code Not Appearing
-```bash
-# Check if Baileys server is running
-docker-compose logs whatsapp-gateway | grep "QR CODE"
-
-# If no QR code, restart the container
-docker-compose restart
-```
-
-#### 2. WhatsApp Connection Lost
-```bash
-# Check connection status
-curl http://localhost:8000/status
-
-# Restart services
-docker-compose restart
-
-# If persistent, clear auth and re-authenticate
-docker volume rm notification-engine_whatsapp_auth
-docker-compose restart
-```
-
-#### 3. Port Conflicts
-```bash
-# Check what's using the ports
-lsof -i :8000
-lsof -i :3000
-
-# Stop conflicting services or change ports in docker-compose.yml
-```
-
-#### 4. Container Won't Start
-```bash
-# Check Docker daemon
-docker info
-
-# Check container logs
-docker-compose logs
-
-# Rebuild container
-docker-compose down
-docker-compose build --no-cache
-docker-compose up
-```
-
-## 🔄 Extending the System
-
-### Adding Media Support
-To extend for images and documents, you would add to `whatsapp-server.js`:
-
-```javascript
-// Future enhancement: media support
-app.post('/send-media', async (req, res) => {
-    const { phone, mediaUrl, caption, mediaType } = req.body;
-    
-    // Download media
-    // Send via Baileys
-    // Return response
-});
-```
-
-### Adding Webhook Support
-For incoming message handling:
-
-```javascript
-// Add to whatsapp-server.js
-sock.ev.on('messages.upsert', async (m) => {
-    // Forward incoming messages to webhook URL
-    // Useful for chatbots and automated responses
-});
-```
-
-### Adding Group Messaging
-```javascript
-// Group message support
-app.post('/send-group', async (req, res) => {
-    const { groupId, message } = req.body;
-    await sock.sendMessage(groupId, { text: message });
-});
-```
-
-## 🛡️ Security Best Practices
-
-1. **Network Security**: Only expose port 8000 externally
-2. **Authentication**: Store auth data in secure volumes
-3. **Rate Limiting**: Implement rate limiting for production
-4. **Environment Variables**: Use `.env` files for sensitive config
-5. **HTTPS**: Use reverse proxy (nginx) for HTTPS in production
-
-## 🚀 Production Deployment
-
-For production use:
-
-1. **Use environment variables** for configuration
-2. **Set up reverse proxy** (nginx) for HTTPS
-3. **Implement rate limiting** to prevent abuse
-4. **Monitor logs** and set up alerting
-5. **Regular backups** of auth_info volume
-6. **Update dependencies** regularly for security
-
-## 📋 Command Reference
-
-```bash
-# Development
-./setup.sh                          # Initial setup
-python test_client.py              # Test the API
-docker-compose logs -f             # Watch logs
-
-# Management
-docker-compose up -d               # Start in background
-docker-compose down                # Stop services
-docker-compose restart             # Restart services
-docker-compose ps                  # Check status
-
-# Troubleshooting
-docker-compose build --no-cache    # Rebuild container
-docker volume ls                   # List volumes
-docker volume rm <volume_name>     # Remove volume (clears auth)
-```
-
-## 📝 Summary
-
-This solution provides exactly what you requested:
-
-✅ **Node.js Baileys server** for WhatsApp automation  
-✅ **Python FastAPI wrapper** for clean REST API  
-✅ **Single Docker container** with supervisord  
-✅ **Persistent authentication** via volumes  
-✅ **Auto-reconnection** on disconnect  
-✅ **QR code authentication** in terminal  
-✅ **Complete code examples** and testing  
-✅ **Production-ready** with proper error handling  
-
-The system is modular, extensible, and ready for production use. You can easily add media support, webhooks, group messaging, and other features as needed.
-
-**Ready to send WhatsApp messages programmatically! 🚀**
-   ```bash
-   docker-compose logs -f whatsapp-gateway
-   ```
-
-2. **Scan the QR code** with your WhatsApp mobile app (Settings → Linked Devices → Link a Device)
-
-3. **Wait for connection confirmation** in the logs
-
-### 3. Test the API
-
-```bash
-# Check health
-curl http://localhost:8000/health
-
-# Check status
-curl http://localhost:8000/status
-
-# Send a message
-curl -X POST http://localhost:8000/send \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phone": "+1234567890",
-    "message": "Hello from WhatsApp API Gateway!"
-  }'
-```
-
-## 📡 API Endpoints
-
-### Python FastAPI (Port 8000)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | API information |
-| `GET` | `/health` | Health check |
-| `GET` | `/status` | Detailed status |
-| `POST` | `/send` | Send WhatsApp message |
-| `POST` | `/test-connection` | Test Baileys connection |
-
-### Node.js Baileys Server (Port 3000)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Server health |
-| `GET` | `/status` | WhatsApp status |
-| `POST` | `/send-message` | Direct message sending |
-
-## 🐍 Python Usage Examples
-
-### Basic Message Sending
-
-```python
-import requests
-
-# Send a simple message
-response = requests.post("http://localhost:8000/send", json={
-    "phone": "+1234567890",
-    "message": "Hello World!"
-})
-
-print(response.json())
-```
-
-### Advanced Usage with Error Handling
-
-```python
-import requests
-import time
-
-class WhatsAppClient:
-    def __init__(self, base_url="http://localhost:8000"):
-        self.base_url = base_url
-    
-    def wait_for_connection(self, timeout=300):
-        """Wait for WhatsApp to connect"""
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                response = requests.get(f"{self.base_url}/status")
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("baileys_server", {}).get("whatsapp_connected"):
-                        return True
-            except:
-                pass
-            time.sleep(10)
-        return False
-    
-    def send_message(self, phone, message):
-        """Send a WhatsApp message"""
-        try:
-            response = requests.post(f"{self.base_url}/send", json={
-                "phone": phone,
-                "message": message
-            })
-            return response.json()
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-# Usage
-client = WhatsAppClient()
-
-# Wait for connection (after QR scan)
-if client.wait_for_connection():
-    result = client.send_message("+1234567890", "Hello from Python!")
-    print(result)
-else:
-    print("Failed to connect to WhatsApp")
-```
-
-### Bulk Message Sending
-
-```python
-import requests
-import time
-
-def send_bulk_messages(contacts, message, delay=2):
-    """Send message to multiple contacts with delay"""
-    results = []
-    
-    for contact in contacts:
-        try:
-            response = requests.post("http://localhost:8000/send", json={
-                "phone": contact,
-                "message": message
-            })
-            results.append({
-                "contact": contact,
-                "success": response.status_code == 200,
-                "response": response.json()
-            })
-            print(f"Sent to {contact}: {response.status_code}")
-            
-            # Add delay between messages
-            time.sleep(delay)
-            
-        except Exception as e:
-            results.append({
-                "contact": contact,
-                "success": False,
-                "error": str(e)
-            })
-    
-    return results
-
-# Usage
-contacts = ["+1234567890", "+0987654321"]
-message = "Bulk message from API Gateway!"
-results = send_bulk_messages(contacts, message)
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | `production` | Node.js environment |
-| `PYTHONUNBUFFERED` | `1` | Python output buffering |
-
-### Persistent Data
-
-- **WhatsApp Auth**: Stored in `/app/auth_info` (Docker volume)
-- **Logs**: Available in `/var/log/` inside container
-
-### Port Configuration
-
-- **Python API**: `8000` (expose this for external access)
-- **Node.js Server**: `3000` (internal communication)
-
-## 📊 Monitoring
-
-### Health Checks
-
-```bash
-# Container health
-docker-compose ps
-
-# API health
-curl http://localhost:8000/health
-
-# Detailed status
-curl http://localhost:8000/status
-```
-
-### Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Python API only
-docker-compose exec whatsapp-gateway tail -f /var/log/python-api.log
-
-# Baileys server only
-docker-compose exec whatsapp-gateway tail -f /var/log/baileys-server.log
-```
-
-## 🔍 Testing
-
-Use the included test client:
-
-```bash
-python test_client.py
-```
-
-This will:
-1. Check service health
-2. Wait for WhatsApp connection
-3. Send a test message
-4. Provide detailed feedback
-
-## 🛡️ Security Considerations
-
-- **Network**: Only expose port 8000 externally
-- **Auth Persistence**: Use Docker volumes for auth data
-- **Rate Limiting**: Implement rate limiting for production use
-- **Environment**: Use environment variables for sensitive config
-
-## 🔄 Future Extensions
-
-### Media Support
-
-```python
-# Future: Send image
-response = requests.post("http://localhost:8000/send-media", json={
-    "phone": "+1234567890",
-    "media_url": "https://example.com/image.jpg",
-    "caption": "Check this out!"
-})
-```
-
-### Webhook Integration
-
-```python
-# Future: Webhook for incoming messages
-@app.post("/webhook/message")
-async def handle_incoming_message(message_data: dict):
-    # Process incoming WhatsApp messages
-    pass
-```
-
-### Group Messaging
-
-```python
-# Future: Send to groups
-response = requests.post("http://localhost:8000/send-group", json={
-    "group_id": "group@g.us",
-    "message": "Hello group!"
-})
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **QR Code Not Appearing**
-   ```bash
-   docker-compose logs whatsapp-gateway | grep "QR CODE"
-   ```
-
-2. **Connection Lost**
-   - Check if phone is connected to internet
-   - Restart container: `docker-compose restart`
-
-3. **Port Conflicts**
-   - Change ports in `docker-compose.yml`
-   - Update client URLs accordingly
-
-4. **Authentication Issues**
-   - Remove auth volume: `docker volume rm notification-engine_whatsapp_auth`
-   - Restart and re-scan QR code
-
-### Debug Mode
-
-```bash
-# Run with debug logs
-docker-compose down
-docker-compose up --build
-```
-
-## 📝 License
-
-MIT License - Feel free to modify and distribute.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Submit pull request
-
----
-
-**Ready to send WhatsApp messages programmatically! 🚀**
+**Ready for production deployment! 🚀**

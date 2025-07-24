@@ -21,7 +21,7 @@ app = FastAPI(
 )
 
 # Configuration
-BAILEYS_SERVER_URL = "http://localhost:3000"
+BAILEYS_SERVER_URL = "http://localhost:3050"
 
 # Pydantic models
 class SendMessageRequest(BaseModel):
@@ -475,7 +475,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "python_api:app",
         host="0.0.0.0",
-        port=8000,
+        port=3051,
         reload=False,
         log_level="info"
     )

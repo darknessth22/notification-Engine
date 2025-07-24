@@ -4,8 +4,8 @@ services:
   whatsapp-gateway:
     build: .
     ports:
-      - "8000:8000"  # Python FastAPI (WhatsApp Gateway)
-      - "3000:3000"  # Node.js Baileys WebSocket server
+      - "3051:3051"  # Python FastAPI (WhatsApp Gateway)
+      - "3050:3050"  # Node.js Baileys WebSocket server
     volumes:
       - whatsapp_auth:/app/auth_info  # Persistent WhatsApp authentication
       - ./logs:/app/logs              # Container logs
@@ -15,7 +15,7 @@ services:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3051/health"]
       interval: 30s
       timeout: 10s
       retries: 3

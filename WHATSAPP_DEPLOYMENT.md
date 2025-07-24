@@ -31,9 +31,9 @@ Copy these files to your new VM to deploy the WhatsApp service:
 4. **Scan QR code** for WhatsApp authentication (first time only)
 
 ## Service Endpoints
-- WhatsApp Server: `http://localhost:3000`
-- Python API: `http://localhost:8000`
-- Health Check: `http://localhost:8000/health`
+- WhatsApp Server: `http://localhost:3050`
+- Python API: `http://localhost:3051`
+- Health Check: `http://localhost:3051/health`
 
 ## Notes
 - The `apps/ai_detection/` folder stays on individual machines (not dockerized)

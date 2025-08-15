@@ -1,0 +1,109 @@
+==========================================
+FILES NEEDED FOR NEW MACHINE DEPLOYMENT
+==========================================
+
+📋 ESSENTIAL FILES TO COPY:
+
+1. DOCKER CONFIGURATION FILES:
+   ✅ docker-compose.yml          - Main orchestration file
+   ✅ Dockerfile                  - Container build instructions
+   ✅ supervisord.conf            - Process manager (runs Node.js + Python)
+   ✅ entrypoint.sh               - Container startup script
+   ✅ requirements.txt            - Python dependencies
+
+2. APPLICATION SOURCE CODE (BOTH REQUIRED):
+   ✅ apps/whatsapp_gateway/whatsapp-server.js    - Node.js Baileys server (WhatsApp connection)
+   ✅ apps/whatsapp_gateway/python_api.py         - Python FastAPI gateway (API endpoints)
+   ✅ apps/whatsapp_gateway/package.json          - Node.js dependencies
+   
+   ⚠️  BOTH services are required and run simultaneously via supervisord
+
+3. CONFIGURATION:
+   ✅ config/config.yaml          - Application settings (phone numbers, etc.)
+
+4. OPTIONAL FILES:
+   ✅ docker-compose.registry.yml - For pre-built image deployment
+   ✅ .dockerignore               - Docker build optimization
+   ✅ .gitignore                  - Git ignore rules
+
+==========================================
+DIRECTORY STRUCTURE TO CREATE:
+==========================================
+
+new-machine/
+├── docker-compose.yml
+├── Dockerfile
+├── supervisord.conf
+├── entrypoint.sh
+├── requirements.txt
+├── apps/
+│   └── whatsapp_gateway/
+│       ├── whatsapp-server.js
+│       ├── python_api.py
+│       └── package.json
+└── config/
+    └── config.yaml
+
+==========================================
+WHAT YOU DON'T NEED TO COPY:
+==========================================
+
+❌ apps/ai_detection/          - AI detection stays on individual machines
+❌ data/                       - Videos/images not needed for WhatsApp service
+❌ logs/                       - Created automatically
+❌ docs/                       - Documentation only
+❌ .git/                       - Git history
+❌ __pycache__/                - Python cache files
+
+==========================================
+DEPLOYMENT STEPS ON NEW MACHINE:
+==========================================
+
+1. Install Docker and Docker Compose
+2. Copy the files listed above
+3. Navigate to the project directory
+4. Run: docker compose up -d
+5. Scan QR code for WhatsApp authentication (first time only)
+6. Test: curl http://localhost:3051/health
+
+==========================================
+REGISTRY-BASED DEPLOYMENT (ALTERNATIVE):
+==========================================
+
+If you build and push to Docker registry:
+1. Build: docker build -t your-registry/whatsapp-gateway:latest .
+2. Push: docker push your-registry/whatsapp-gateway:latest
+
+Then on new machine you only need:
+✅ docker-compose.registry.yml (rename to docker-compose.yml)
+✅ config/config.yaml
+✅ Create logs/ directory
+
+==========================================
+WHY BOTH SERVICES ARE NEEDED:
+==========================================
+
+🟦 Node.js Baileys Server (Port 3050):
+   - Handles WhatsApp Web connection
+   - Manages QR code authentication  
+   - Sends/receives WhatsApp messages
+   - WebSocket communication with WhatsApp
+
+🟨 Python FastAPI (Port 3051):
+   - Provides REST API endpoints
+   - Handles multi-number logic from config.yaml
+   - Receives requests from external services
+   - Bridges to Node.js Baileys server
+
+🔄 How they work together:
+   External App → Python API (3051) → Node.js Server (3050) → WhatsApp
+
+==========================================
+PORTS USED:
+==========================================
+
+🔌 3050 - Node.js Baileys WebSocket server
+🔌 3051 - Python FastAPI gateway
+🔌 Health check: http://localhost:3051/health
+
+==========================================

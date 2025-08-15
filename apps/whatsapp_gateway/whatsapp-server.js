@@ -158,58 +158,6 @@ app.get('/status', (req, res) => {
     });
 });
 
-app.post('/send-message', async (req, res) => {
-    try {
-        const { phone, message } = req.body;
-
-        if (!phone || !message) {
-            return res.status(400).json({
-                success: false,
-                error: 'Phone number and message are required'
-            });
-        }
-
-        if (!isConnected || !sock) {
-            return res.status(503).json({
-                success: false,
-                error: 'WhatsApp not connected. Please check connection status.'
-            });
-        }
-
-        const formattedPhone = formatPhoneNumber(phone);
-        
-        // Check if the number exists on WhatsApp
-        const [result] = await sock.onWhatsApp(formattedPhone);
-        if (!result?.exists) {
-            return res.status(400).json({
-                success: false,
-                error: 'Phone number is not registered on WhatsApp'
-            });
-        }
-
-        // Send the message
-        const sentMessage = await sock.sendMessage(formattedPhone, { text: message });
-        
-        logger.info(`Message sent to ${formattedPhone}: ${message}`);
-        
-        res.json({
-            success: true,
-            message: 'Message sent successfully',
-            messageId: sentMessage.key.id,
-            to: formattedPhone,
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        logger.error('Error sending message:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to send message',
-            details: error.message
-        });
-    }
-});
-
 // Send image/media endpoint
 app.post('/send-image', upload.single('image'), async (req, res) => {
     try {
@@ -366,6 +314,59 @@ app.post('/send-image-url', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to send image from URL',
+            details: error.message
+        });
+    }
+});
+
+// Send message endpoint
+app.post('/send', async (req, res) => {
+    try {
+        const { phone, message } = req.body;
+
+        if (!phone || !message) {
+            return res.status(400).json({
+                success: false,
+                error: 'Phone number and message are required'
+            });
+        }
+
+        if (!isConnected || !sock) {
+            return res.status(503).json({
+                success: false,
+                error: 'WhatsApp not connected. Please check connection status.'
+            });
+        }
+
+        const formattedPhone = formatPhoneNumber(phone);
+        
+        // Check if the number exists on WhatsApp
+        const [result] = await sock.onWhatsApp(formattedPhone);
+        if (!result?.exists) {
+            return res.status(400).json({
+                success: false,
+                error: 'Phone number is not registered on WhatsApp'
+            });
+        }
+
+        // Send the message
+        const sentMessage = await sock.sendMessage(formattedPhone, { text: message });
+        
+        logger.info(`Message sent to ${formattedPhone}: ${message}`);
+        
+        res.json({
+            success: true,
+            message: 'Message sent successfully',
+            messageId: sentMessage.key.id,
+            to: formattedPhone,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        logger.error('Error sending message:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to send message',
             details: error.message
         });
     }

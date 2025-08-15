@@ -27,7 +27,8 @@ auth_info/
 *.avi
 *.mov
 *.wmv
-
+*.png
+*.jpg
 # Selenium WebDriver logs and temp files
 *.log
 *.tmp

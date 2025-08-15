@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   whatsapp-gateway:
     build: .
+    container_name: whatsapp-gateway
     ports:
       - "3051:3051"  # Python FastAPI (WhatsApp Gateway)
       - "3050:3050"  # Node.js Baileys WebSocket server
@@ -13,6 +12,7 @@ services:
     environment:
       - NODE_ENV=production
       - PYTHONUNBUFFERED=1
+      - PYTHON_API_PORT=3051
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3051/health"]

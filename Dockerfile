@@ -1,4 +1,4 @@
-# WhatsApp Gateway Services - Core notification engine
+# WhatsApp Gateway Services - Clean notification engine
 FROM node:20-bullseye
 
 # Install system dependencies for WhatsApp services

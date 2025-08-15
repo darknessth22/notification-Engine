@@ -1,23 +1,25 @@
 model:
   fire_detection:
-    path: "models/firesmoke_v4-8m_20241223.pt"
+    path: "apps/ai_detection/model/fire-detection.pt"
     confidence_threshold: 0.5
 video:
-  stream_url: "data/videos/Security Camera Video of Fire at WLNE.mp4"
+  stream_url: "data/vidoes/Security Camera Video of Fire at WLNE.mp4"
   output_directory: "data/violations"
 
 whatsapp:
   api:
     python_server_url: "http://localhost:3051"
     baileys_server_url: "http://localhost:3050"
-  phone_number: "+201025939307"
+  phone_numbers:
+    - "+201025939307"    # Primary number
+    - "+201553641192"  
   send_images: false
   send_videos: false  
-  send_text: false  
+  send_text: true  
 
 server:
   host: "0.0.0.0"
-  port: 8001
+  port: 3051
   reload: false
 
 logging:

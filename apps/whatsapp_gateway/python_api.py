@@ -472,10 +472,13 @@ async def test_connection():
     }
 
 if __name__ == "__main__":
+    # Get port from environment variable or default to 3051
+    port = int(os.getenv('PYTHON_API_PORT', 3051))
+    
     uvicorn.run(
         "python_api:app",
         host="0.0.0.0",
-        port=3051,
+        port=port,
         reload=False,
         log_level="info"
     )

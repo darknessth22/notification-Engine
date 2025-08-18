@@ -18,14 +18,14 @@ class TestAPI:
             self.config = yaml.safe_load(file)
         
         # Initialize the fire detection model
-        model_path = self.config['model']['fire_detection']['path']
-        self.confidence_threshold = self.config['model']['fire_detection']['confidence_threshold']
-        device = "cuda" if self.config.get('device', {}).get('prefer_cuda', False) else "cpu"
+        model_path = self.config['app']['ai_detection']['model']['fire_detection']['path']
+        self.confidence_threshold = self.config['app']['ai_detection']['model']['fire_detection']['confidence_threshold']
+        device = "cuda" if self.config['app']['ai_detection'].get('device', {}).get('prefer_cuda', False) else "cpu"
         
         self.fire_model = YOLO(model_path).to(device)
 
         # WhatsApp configuration
-        self.whatsapp_config = self.config.get("whatsapp", {})
+        self.whatsapp_config = self.config['app']['notifications']['settings']['providers']['whatsapp']
         self.whatsapp_api_url = self.whatsapp_config.get("api", {}).get("python_server_url", "http://localhost:8000")
         self.send_images = self.whatsapp_config.get("send_images", True)
         self.send_videos = self.whatsapp_config.get("send_videos", False)
@@ -53,7 +53,7 @@ class TestAPI:
         logging.info(f"WhatsApp notification mode: {notification_mode}")
         logging.info("Text messages available via /send-message-to-whatsapp endpoint only")
         
-        self.alert_counter = self.config.get("notification", {}).get("initial_alert_counter", 1)
+        self.alert_counter = self.config['app']['notifications']['settings'].get("initial_alert_counter", 1)
         self.detection_status = {}  # For tracking detection timestamps
         
         # Video recording configuration for testing
@@ -614,7 +614,7 @@ class TestAPI:
         """
         Capture video frames, process each frame, and yield the encoded frame.
         """
-        cap = cv2.VideoCapture(self.config.get("video", {}).get("stream_url"))
+        cap = cv2.VideoCapture(self.config['app']['video'].get("stream_url"))
         if not cap.isOpened():
             logging.error("Error: Couldn't open video file.")
             return
@@ -672,4 +672,15 @@ class TestAPI:
 app_instance = TestAPI()
 app = app_instance.app
 if __name__ == "__main__":
-    uvicorn.run("TestAPI:app", host="0.0.0.0", port=8001, reload=True)
+    # Load config to get server settings
+    with open("config/config.yaml", 'r') as file:
+        config = yaml.safe_load(file)
+    
+    server_config = config['app']['server']
+    # Use port 8001 for TestAPI to avoid conflict with Docker container (port 3051)
+    uvicorn.run(
+        "TestAPI:app", 
+        host=server_config.get('host', '0.0.0.0'), 
+        port=8001,  # Fixed port for TestAPI to avoid Docker conflict
+        reload=server_config.get('reload', True)
+    )

@@ -9,10 +9,23 @@ import uvicorn
 from datetime import datetime
 import aiofiles
 import os
+import yaml
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Load configuration
+def load_config():
+    config_path = os.getenv('CONFIG_PATH', 'config/config.yaml')
+    try:
+        with open(config_path, 'r') as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        logger.warning(f"Config file not found at {config_path}, using defaults")
+        return {}
+
+config = load_config()
 
 app = FastAPI(
     title="WhatsApp API Gateway",
@@ -21,7 +34,8 @@ app = FastAPI(
 )
 
 # Configuration
-BAILEYS_SERVER_URL = "http://localhost:3050"
+whatsapp_config = config.get('app', {}).get('notifications', {}).get('settings', {}).get('providers', {}).get('whatsapp', {})
+BAILEYS_SERVER_URL = whatsapp_config.get('api', {}).get('baileys_server_url', "http://localhost:3050")
 
 # Pydantic models
 class SendMessageRequest(BaseModel):
@@ -472,13 +486,18 @@ async def test_connection():
     }
 
 if __name__ == "__main__":
-    # Get port from environment variable or default to 3051
-    port = int(os.getenv('PYTHON_API_PORT', 3051))
+    # Get server configuration
+    server_config = config.get('app', {}).get('server', {})
+    
+    # Get port from environment variable, config, or default to 3051
+    port = int(os.getenv('PYTHON_API_PORT') or server_config.get('port', 3051))
+    host = server_config.get('host', '0.0.0.0')
+    reload = server_config.get('reload', False)
     
     uvicorn.run(
         "python_api:app",
-        host="0.0.0.0",
+        host=host,
         port=port,
-        reload=False,
+        reload=reload,
         log_level="info"
     )

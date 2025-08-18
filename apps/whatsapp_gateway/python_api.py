@@ -161,7 +161,7 @@ async def send_message(request: SendMessageRequest):
         # Forward request to Baileys server
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{BAILEYS_SERVER_URL}/send-message",
+                f"{BAILEYS_SERVER_URL}/send",
                 json={
                     "phone": request.phone,
                     "message": request.message
